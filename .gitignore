@@ -1,0 +1,10 @@
+# Build
+build*/
+
+# IDEs
+.vscode/
+.idea/
+.vs/
+
+# Misc
+CMakeUserPresets.json
