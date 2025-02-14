@@ -1,0 +1,52 @@
+{
+    "version": 2,
+    "cmakeMinimumRequired": {
+        "major": 3,
+        "minor": 19,
+        "patch": 0
+    },
+    "configurePresets": [
+        {
+            "name": "lin",
+            "displayName": "Linux",
+            "generator": "Unix Makefiles",
+            "binaryDir": "${sourceDir}/build_lin",
+            "environment": {
+                "CXX": "clang++"
+            },
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Debug",
+                "MUSTEX_CXX_STANDARD_17": "ON",
+                "MUSTEX_BUILD_TESTS": "ON"
+            }
+        },
+        {
+            "name": "win-vs16-2019",
+            "displayName": "Windows VS16 2019",
+            "generator": "Visual Studio 16 2019",
+            "architecture": "x64",
+            "binaryDir": "${sourceDir}/build_win",
+            "cacheVariables": {
+                "MUSTEX_CXX_STANDARD_17": "ON",
+                "MUSTEX_BUILD_TESTS": "ON"
+            }
+        }
+    ],
+    "buildPresets": [
+        {
+            "name": "lin",
+            "configurePreset": "lin",
+            "targets": [
+                "mustex_tests"
+            ]
+        },
+        {
+            "name": "win-vs16-2019",
+            "configurePreset": "win-vs16-2019",
+            "targets": [
+                "mustex_tests"
+            ],
+            "configuration": "RelWithDebInfo"
+        }
+    ]
+}
