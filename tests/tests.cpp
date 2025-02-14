@@ -30,7 +30,7 @@ TEST_CASE("Construct mustex", "[mustex]")
 #if __cplusplus >= 201703L
 TEST_CASE("Lock mustex", "[mustex]")
 {
-    Mustex m(int{42});
+    Mustex<int> m(42);
     auto handle = m.lock();
     REQUIRE(*handle == 42);
 }
@@ -48,7 +48,7 @@ TEST_CASE("Lock mustex mutably", "[mustex]")
 #if __cplusplus >= 201703L
 TEST_CASE("Access mustex readonly", "[mustex]")
 {
-    Mustex m(MyClass(111));
+    Mustex<MyClass> m(MyClass(111));
     auto handle = m.lock();
     REQUIRE(handle->do_things() == 222);
 }
@@ -66,7 +66,7 @@ TEST_CASE("Access mustex mutably", "[mustex]")
 #if __cplusplus >= 201703L
 TEST_CASE("Lock mustex readonly twice", "[mustex]")
 {
-    Mustex m(int{42});
+    Mustex<int> m(42);
 
     auto tic = std::chrono::system_clock::now();
 
@@ -98,7 +98,7 @@ TEST_CASE("Lock mustex readonly twice", "[mustex]")
 
 TEST_CASE("Lock mustex mutably while locked readonly", "[mustex]")
 {
-    Mustex m(int{42});
+    Mustex<int> m(42);
 
     auto tic = std::chrono::system_clock::now();
 
@@ -132,7 +132,7 @@ TEST_CASE("Lock mustex mutably while locked readonly", "[mustex]")
 
 TEST_CASE("Lock mustex readonly while locked mutably", "[mustex]")
 {
-    Mustex m(int{42});
+    Mustex<int> m(42);
 
     auto tic = std::chrono::system_clock::now();
 

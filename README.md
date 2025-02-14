@@ -10,7 +10,7 @@ and tries to mimic its functionalities.
 ## Example
 
 ```cpp
-Mustex<int> mustex(int{42});
+Mustex<int> mustex(42);
 
 {
     // Lock in readonly mode.

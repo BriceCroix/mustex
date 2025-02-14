@@ -70,8 +70,9 @@ template<class T>
 class Mustex
 {
 public:
-    Mustex(T &&data)
-        : m_data{data}
+    template <typename... Args>
+    Mustex(Args&&... args)
+        : m_data(std::forward<Args>(args)...)
         , m_mutex{}
     {
     }
