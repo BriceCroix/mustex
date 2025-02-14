@@ -1,11 +1,11 @@
 #ifndef BCX_MUSTEX_HPP
 #define BCX_MUSTEX_HPP
 
-#include <optional>
 
 #if __cplusplus >= 201103L && __cplusplus < 201703L
 #    include <mutex>
 #elif __cplusplus >= 201703L
+#    include <optional>
 #    include <shared_mutex>
 #else
 #    error Unsupported C++ standard.
@@ -106,12 +106,6 @@ public:
             return MustexHandle<T, std::shared_lock<MustexMutexType>>(std::move(lock), m_data);
         return {};
     }
-#endif // #if __cplusplus >= 201703L
-
-    MustexHandle<T, std::unique_lock<MustexMutexType>> lock_mut()
-    {
-        return MustexHandle<T, std::unique_lock<MustexMutexType>>(std::ref(m_mutex), m_data);
-    }
 
     std::optional<MustexHandle<T, std::unique_lock<MustexMutexType>>> try_lock_mut()
     {
@@ -119,6 +113,12 @@ public:
         if (lock.owns_lock())
             return MustexHandle<T, std::unique_lock<MustexMutexType>>(std::move(lock), m_data);
         return {};
+    }
+#endif // #if __cplusplus >= 201703L
+
+    MustexHandle<T, std::unique_lock<MustexMutexType>> lock_mut()
+    {
+        return MustexHandle<T, std::unique_lock<MustexMutexType>>(std::ref(m_mutex), m_data);
     }
 
 private:
