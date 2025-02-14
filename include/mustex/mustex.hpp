@@ -76,6 +76,14 @@ public:
     {
     }
 
+    Mustex(const Mustex &) = delete; // FIXME enable this if T has a copy constructor.
+    Mustex(Mustex &&other) = delete; // FIXME enable this by finding a way to make sure other has no handle around.
+
+    Mustex &operator=(const Mustex &other) = delete; // FIXME enable this if T has a copy constructor.
+    Mustex &operator=(Mustex &&other) = delete; // FIXME enable this by finding a way to make sure other has no handle around.
+
+    virtual ~Mustex() = default;
+
 #if __cplusplus >= 201703L
     MustexHandle<const T, std::shared_lock<MustexMutexType>> lock()
     {
