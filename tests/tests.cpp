@@ -111,6 +111,8 @@ TEST_CASE("Lock mustex mutably while locked readonly", "[mustex]")
             std::this_thread::sleep_for(std::chrono::milliseconds(100));
         }
     );
+    // Make sure the future starts.
+    std::this_thread::sleep_for(std::chrono::milliseconds(0));
 
     auto future2 = std::async(
         std::launch::async,
@@ -144,6 +146,8 @@ TEST_CASE("Lock mustex readonly while locked mutably", "[mustex]")
             std::this_thread::sleep_for(std::chrono::milliseconds(100));
         }
     );
+    // Make sure the future starts.
+    std::this_thread::sleep_for(std::chrono::milliseconds(0));
 
     auto future2 = std::async(
         std::launch::async,
@@ -178,6 +182,8 @@ TEST_CASE("Lock mustex mutably while locked mutably", "[mustex]")
             std::this_thread::sleep_for(std::chrono::milliseconds(100));
         }
     );
+    // Make sure the future starts.
+    std::this_thread::sleep_for(std::chrono::milliseconds(0));
 
     auto future2 = std::async(
         std::launch::async,
