@@ -23,38 +23,11 @@ using MustexMutexType =
 template<typename T>
 class Mustex;
 
-#if __cplusplus >= 201703L
-template<typename T>
+template<typename T, typename L>
 class MustexHandle
 {
 public:
-    friend class Mustex<T>;
-
-    const T &operator*() const
-    {
-        return m_data;
-    }
-
-    const T *operator->() const
-    {
-        return &m_data;
-    }
-
-private:
-    std::shared_lock<std::shared_mutex> m_lock;
-    const T &m_data;
-
-    MustexHandle(std::shared_mutex &mutex, const T &data)
-        : m_lock(mutex)
-        , m_data{data} {}
-};
-#endif // #if __cplusplus >= 201703L
-
-template<typename T>
-class MustexHandleMut
-{
-public:
-    friend class Mustex<T>;
+    friend class Mustex<typename std::remove_const<T>::type>;
 
     T &operator*()
     {
@@ -67,17 +40,17 @@ public:
     }
 
 private:
-    std::unique_lock<MustexMutexType> m_lock;
+    L m_lock;
     T &m_data;
 
-    MustexHandleMut(MustexMutexType &mutex, T &data)
+    MustexHandle(MustexMutexType &mutex, T &data)
         : m_lock(mutex)
         , m_data{data}
     {
     }
 };
 
-template<typename T>
+template<class T>
 class Mustex
 {
 public:
@@ -88,15 +61,15 @@ public:
     }
 
 #if __cplusplus >= 201703L
-    MustexHandle<T> lock()
+    MustexHandle<const T, std::shared_lock<MustexMutexType>> lock()
     {
-        return MustexHandle<T>(m_mutex, m_data);
+        return MustexHandle<const T, std::shared_lock<MustexMutexType>>(m_mutex, m_data);
     }
 #endif // #if __cplusplus >= 201703L
 
-    MustexHandleMut<T> lock_mut()
+    MustexHandle<T, std::unique_lock<MustexMutexType>> lock_mut()
     {
-        return MustexHandleMut<T>(m_mutex, m_data);
+        return MustexHandle<T, std::unique_lock<MustexMutexType>>(m_mutex, m_data);
     }
 
 private:
