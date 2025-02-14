@@ -38,7 +38,7 @@ TEST_CASE("Lock mustex", "[mustex]")
 
 TEST_CASE("Lock mustex mutably", "[mustex]")
 {
-    Mustex<int> m(int{42});
+    Mustex<int> m(42);
     auto handle = m.lock_mut();
     REQUIRE(*handle == 42);
     *handle = 8;
@@ -168,7 +168,7 @@ TEST_CASE("Lock mustex readonly while locked mutably", "[mustex]")
 
 TEST_CASE("Lock mustex mutably while locked mutably", "[mustex]")
 {
-    Mustex<int> m(int{42});
+    Mustex<int> m(42);
 
     auto tic = std::chrono::system_clock::now();
 
@@ -202,9 +202,41 @@ TEST_CASE("Lock mustex mutably while locked mutably", "[mustex]")
     REQUIRE(tac - tic >= std::chrono::milliseconds(200));
 }
 
+TEST_CASE("Try lock mutably", "[mustex]")
+{
+    Mustex<int> m(42);
+
+    auto opt_handle = m.try_lock_mut();
+    REQUIRE(opt_handle.has_value());
+    REQUIRE(*opt_handle.value() == 42);
+    *opt_handle.value() = 45;
+    REQUIRE(*opt_handle.value() == 45);
+
+    auto opt_handle2 = m.try_lock_mut();
+    REQUIRE_FALSE(opt_handle2.has_value());
+}
+
+#if __cplusplus >= 201703L
+TEST_CASE("Try lock", "[mustex]")
+{
+    Mustex<int> m(42);
+
+    auto opt_handle = m.try_lock();
+    REQUIRE(opt_handle.has_value());
+    REQUIRE(*opt_handle.value() == 42);
+
+    auto opt_handle2 = m.try_lock();
+    REQUIRE(opt_handle2.has_value());
+    REQUIRE(*opt_handle2.value() == 42);
+
+    auto opt_handle3 = m.try_lock_mut();
+    REQUIRE_FALSE(opt_handle3.has_value());
+}
+#endif // #if __cplusplus >= 201703L
+
 TEST_CASE("Transfer handle ownership mutably", "[mustex]")
 {
-    Mustex<int> m(int{42});
+    Mustex<int> m(42);
 
     auto handle = m.lock_mut();
     MustexHandle handle2(std::move(handle));
@@ -215,7 +247,7 @@ TEST_CASE("Transfer handle ownership mutably", "[mustex]")
 #if __cplusplus >= 201703L
 TEST_CASE("Transfer handle ownership", "[mustex]")
 {
-    Mustex<int> m(int{42});
+    Mustex<int> m(42);
 
     auto handle = m.lock();
     MustexHandle handle2(std::move(handle));

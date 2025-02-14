@@ -1,6 +1,8 @@
 #ifndef BCX_MUSTEX_HPP
 #define BCX_MUSTEX_HPP
 
+#include <optional>
+
 #if __cplusplus >= 201103L && __cplusplus < 201703L
 #    include <mutex>
 #elif __cplusplus >= 201703L
@@ -64,14 +66,20 @@ private:
         , m_data{data}
     {
     }
+
+    MustexHandle(L &&lock, T &data)
+        : m_lock(std::move(lock))
+        , m_data{data}
+    {
+    }
 };
 
 template<class T>
 class Mustex
 {
 public:
-    template <typename... Args>
-    Mustex(Args&&... args)
+    template<typename... Args>
+    Mustex(Args &&...args)
         : m_data(std::forward<Args>(args)...)
         , m_mutex{}
     {
@@ -88,13 +96,29 @@ public:
 #if __cplusplus >= 201703L
     MustexHandle<const T, std::shared_lock<MustexMutexType>> lock()
     {
-        return MustexHandle<const T, std::shared_lock<MustexMutexType>>(m_mutex, m_data);
+        return MustexHandle<const T, std::shared_lock<MustexMutexType>>(std::ref(m_mutex), m_data);
+    }
+
+    std::optional<MustexHandle<T, std::shared_lock<MustexMutexType>>> try_lock()
+    {
+        std::shared_lock lock(m_mutex, std::try_to_lock);
+        if (lock.owns_lock())
+            return MustexHandle<T, std::shared_lock<MustexMutexType>>(std::move(lock), m_data);
+        return {};
     }
 #endif // #if __cplusplus >= 201703L
 
     MustexHandle<T, std::unique_lock<MustexMutexType>> lock_mut()
     {
-        return MustexHandle<T, std::unique_lock<MustexMutexType>>(m_mutex, m_data);
+        return MustexHandle<T, std::unique_lock<MustexMutexType>>(std::ref(m_mutex), m_data);
+    }
+
+    std::optional<MustexHandle<T, std::unique_lock<MustexMutexType>>> try_lock_mut()
+    {
+        std::unique_lock lock(m_mutex, std::try_to_lock);
+        if (lock.owns_lock())
+            return MustexHandle<T, std::unique_lock<MustexMutexType>>(std::move(lock), m_data);
+        return {};
     }
 
 private:
