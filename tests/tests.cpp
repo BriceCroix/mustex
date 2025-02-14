@@ -195,3 +195,25 @@ TEST_CASE("Lock mustex mutably while locked mutably", "[mustex]")
     auto tac = std::chrono::system_clock::now();
     REQUIRE(tac - tic >= std::chrono::milliseconds(200));
 }
+
+TEST_CASE("Transfer handle ownership mutably", "[mustex]")
+{
+    Mustex<int> m(int{42});
+
+    auto handle = m.lock_mut();
+    MustexHandle handle2(std::move(handle));
+
+    REQUIRE(*handle2 == 42);
+}
+
+#if __cplusplus >= 201703L
+TEST_CASE("Transfer handle ownership", "[mustex]")
+{
+    Mustex<int> m(int{42});
+
+    auto handle = m.lock();
+    MustexHandle handle2(std::move(handle));
+
+    REQUIRE(*handle2 == 42);
+}
+#endif // #if __cplusplus >= 201703L

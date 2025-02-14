@@ -29,6 +29,22 @@ class MustexHandle
 public:
     friend class Mustex<typename std::remove_const<T>::type>;
 
+    MustexHandle() = delete;
+    MustexHandle(const MustexHandle &) = delete;
+    MustexHandle(MustexHandle &&other)
+        : m_lock{std::move(other.m_lock)}, m_data{other.m_data}
+    {
+    }
+
+    MustexHandle &operator=(const MustexHandle &other) = delete;
+    MustexHandle &operator=(MustexHandle &&other)
+    {
+        m_data = other.m_data;
+        m_lock = std::move(other.m_lock);
+    }
+
+    virtual ~MustexHandle() = default;
+
     T &operator*()
     {
         return m_data;
