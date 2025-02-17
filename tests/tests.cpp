@@ -255,3 +255,40 @@ TEST_CASE("Transfer handle ownership", "[mustex]")
     REQUIRE(*handle2 == 42);
 }
 #endif // #if __cplusplus >= 201703L
+
+#if __cplusplus >= 202002L
+TEST_CASE("Copy mustex unused", "[mustex]")
+{
+    Mustex<int> m(42);
+    decltype(m) m2(m);
+
+    REQUIRE(*m.lock() == 42);
+    REQUIRE(*m2.lock() == 42);
+}
+#endif // #if __cplusplus >= 202002L
+
+#if __cplusplus >= 202002L
+TEST_CASE("Copy mustex used mutably", "[mustex]")
+{
+    auto tic = std::chrono::system_clock::now();
+
+    Mustex<int> m(42);
+
+    auto future = std::async(
+        std::launch::async,
+        [&m]
+        {
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        }
+    );
+    // Make sure the future starts.
+    std::this_thread::sleep_for(std::chrono::milliseconds(0));
+
+    decltype(m) m2(m);
+
+    REQUIRE(*m2.lock() == 42);
+
+    auto tac = std::chrono::system_clock::now();
+    REQUIRE(tac - tic >= std::chrono::milliseconds(100));
+}
+#endif // #if __cplusplus >= 202002L

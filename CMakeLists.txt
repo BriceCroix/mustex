@@ -4,18 +4,12 @@ project(bcx_mustex VERSION 1.0 LANGUAGES CXX)
 
 set(BCX_MUSTEX_TARGET_NAME "bcx_mustex")
 
-option(MUSTEX_CXX_STANDARD_17 "Use c++ standard 17 and above." ON)
-option(MUSTEX_BUILD_TESTS     "Enable build of unit tests." OFF)
+option(MUSTEX_BUILD_TESTS  "Enable build of unit tests." OFF)
+option(MUSTEX_TESTS_CXX_20 "Use c++ standard 20 and above for tests." ON)
+option(MUSTEX_TESTS_CXX_17 "Use c++ standard 17 for tests." OFF)
 
 add_library(${BCX_MUSTEX_TARGET_NAME} INTERFACE)
 target_include_directories(${BCX_MUSTEX_TARGET_NAME} INTERFACE include)
-
-if(MUSTEX_CXX_STANDARD_17)
-    target_compile_features(${BCX_MUSTEX_TARGET_NAME} INTERFACE cxx_std_17)
-else()
-    target_compile_features(${BCX_MUSTEX_TARGET_NAME} INTERFACE cxx_std_11)
-endif(MUSTEX_CXX_STANDARD_17)
-
 
 if(MUSTEX_BUILD_TESTS)
     Include(FetchContent)
@@ -25,11 +19,13 @@ if(MUSTEX_BUILD_TESTS)
     add_executable(${TESTS_TARGET} tests/tests.cpp)
     target_link_libraries(${TESTS_TARGET} PRIVATE ${BCX_MUSTEX_TARGET_NAME})
 
-    if(MUSTEX_CXX_STANDARD_17)
-        target_compile_features(${TESTS_TARGET} INTERFACE cxx_std_17)
+    if(MUSTEX_TESTS_CXX_20)
+        target_compile_features(${TESTS_TARGET} PUBLIC cxx_std_20)
+    elseif(MUSTEX_TESTS_CXX_17)
+        target_compile_features(${TESTS_TARGET} PUBLIC cxx_std_17)
     else()
-        target_compile_features(${TESTS_TARGET} INTERFACE cxx_std_11)
-    endif(MUSTEX_CXX_STANDARD_17)
+        target_compile_features(${TESTS_TARGET} PUBLIC cxx_std_11)
+    endif()
 
     FetchContent_Declare(
         Catch2

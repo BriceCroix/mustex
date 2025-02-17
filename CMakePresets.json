@@ -16,8 +16,9 @@
             },
             "cacheVariables": {
                 "CMAKE_BUILD_TYPE": "Debug",
-                "MUSTEX_CXX_STANDARD_17": "ON",
-                "MUSTEX_BUILD_TESTS": "ON"
+                "MUSTEX_BUILD_TESTS": "ON",
+                "MUSTEX_TESTS_CXX_20": "ON",
+                "MUSTEX_TESTS_CXX_17": "OFF"
             }
         },
         {
@@ -27,8 +28,9 @@
             "architecture": "x64",
             "binaryDir": "${sourceDir}/build_win",
             "cacheVariables": {
-                "MUSTEX_CXX_STANDARD_17": "ON",
-                "MUSTEX_BUILD_TESTS": "ON"
+                "MUSTEX_BUILD_TESTS": "ON",
+                "MUSTEX_TESTS_CXX_20": "ON",
+                "MUSTEX_TESTS_CXX_17": "OFF"
             }
         }
     ],

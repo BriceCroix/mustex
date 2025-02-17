@@ -1,6 +1,9 @@
 #ifndef BCX_MUSTEX_HPP
 #define BCX_MUSTEX_HPP
 
+#if __cplusplus >= 202002L
+#    include <concepts>
+#endif // #if __cplusplus >= 202002L
 
 #if __cplusplus >= 201103L && __cplusplus < 201703L
 #    include <mutex>
@@ -85,11 +88,42 @@ public:
     {
     }
 
-    Mustex(const Mustex &) = delete; // FIXME enable this if T has a copy constructor.
-    Mustex(Mustex &&other) = delete; // FIXME enable this by finding a way to make sure other has no handle around.
+#if __cplusplus >= 202002L
+    Mustex(const Mustex &other)
+        requires std::is_copy_constructible<T>::value
+        : m_data(*other.lock())
+        , m_mutex{}
+    {
+    }
+    Mustex(Mustex &&other)
+        requires std::is_move_constructible<T>::value
+        : m_data(*other.lock())
+        , m_mutex{}
+    {
+    }
+    Mustex &operator=(const Mustex &other)
+        requires std::is_assignable<T, const T &>::value
+    {
+        m_data = *other.lock();
+    }
+    Mustex &operator=(Mustex &&other)
+        requires std::is_assignable<T, T &&>::value
+    {
+        m_data = std::move(*other.lock_mut());
+    }
+#else // #if __cplusplus >= 202002L
+    // Without c++20 these cannot be simply conditionally defined.
+    // See this great article as of why : https://akrzemi1.wordpress.com/2015/03/02/a-conditional-copy-constructor/
+    // The workaround is to construct Mustex after locking the other :
+    //
+    // Mustex<int> m(42);
+    // Mustex<int> m2(*m.lock()) // Or lock_mut()
 
-    Mustex &operator=(const Mustex &other) = delete; // FIXME enable this if T has a copy constructor.
-    Mustex &operator=(Mustex &&other) = delete; // FIXME enable this by finding a way to make sure other has no handle around.
+    Mustex(const Mustex &) = delete;
+    Mustex(Mustex &&other) = delete;
+    Mustex &operator=(const Mustex &other) = delete;
+    Mustex &operator=(Mustex &&other) = delete;
+#endif // #if __cplusplus < 202002L
 
     virtual ~Mustex() = default;
 
