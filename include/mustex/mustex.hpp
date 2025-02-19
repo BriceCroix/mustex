@@ -82,6 +82,10 @@ class Mustex
 {
 public:
     template<typename... Args>
+#if __cplusplus >= 202002L
+        // Prevent from using this constructor when argument is a musted (ref or moved)
+        requires(!std::is_same_v<Mustex, std::remove_cvref_t<Args>> && ...)
+#endif // #if __cplusplus >= 202002L
     Mustex(Args &&...args)
         : m_data(std::forward<Args>(args)...)
         , m_mutex{}
@@ -95,6 +99,7 @@ public:
         , m_mutex{}
     {
     }
+
     Mustex(Mustex &&other)
         requires std::is_move_constructible<T>::value
         : m_data(*other.lock())
@@ -128,12 +133,12 @@ public:
     virtual ~Mustex() = default;
 
 #if __cplusplus >= 201703L
-    MustexHandle<const T, std::shared_lock<MustexMutexType>> lock()
+    MustexHandle<const T, std::shared_lock<MustexMutexType>> lock() const
     {
         return MustexHandle<const T, std::shared_lock<MustexMutexType>>(std::ref(m_mutex), m_data);
     }
 
-    std::optional<MustexHandle<T, std::shared_lock<MustexMutexType>>> try_lock()
+    std::optional<MustexHandle<T, std::shared_lock<MustexMutexType>>> try_lock() const
     {
         std::shared_lock lock(m_mutex, std::try_to_lock);
         if (lock.owns_lock())
@@ -157,7 +162,7 @@ public:
 
 private:
     T m_data;
-    MustexMutexType m_mutex;
+    mutable MustexMutexType m_mutex;
 };
 } // namespace bcx
 
