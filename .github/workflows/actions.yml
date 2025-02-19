@@ -1,0 +1,43 @@
+name: Testing
+run-name: Run tests
+on:
+  push:
+    branches:
+      - master
+    pull_request:
+      types: [opened, synchronize, reopened]
+jobs:
+  test-cpp11:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Configure
+        run: cmake --preset lin-test-cpp11 .
+      - name: Build
+        run: cmake --build --preset lin-test-cpp11 .
+      - name: Run CTest
+        run: ctest --preset lin-test-cpp11 .
+  test-cpp17:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Configure
+        run: cmake --preset lin-test-cpp17 .
+      - name: Build
+        run: cmake --build --preset lin-test-cpp17 .
+      - name: Run CTest
+        run: ctest --preset lin-test-cpp17 .
+  test-cpp20:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Configure
+        run: cmake --preset lin-test-cpp20 .
+      - name: Build
+        run: cmake --build --preset lin-test-cpp20 .
+      - name: Run CTest
+        run: ctest --preset lin-test-cpp20 .
+

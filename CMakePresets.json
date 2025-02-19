@@ -7,17 +7,35 @@
     },
     "configurePresets": [
         {
-            "name": "lin",
-            "displayName": "Linux",
+            "name": "lin-test-cpp20",
             "generator": "Unix Makefiles",
             "binaryDir": "${sourceDir}/build_lin",
-            "environment": {
-                "CXX": "clang++"
-            },
             "cacheVariables": {
                 "CMAKE_BUILD_TYPE": "Debug",
                 "MUSTEX_BUILD_TESTS": "ON",
                 "MUSTEX_TESTS_CXX_20": "ON",
+                "MUSTEX_TESTS_CXX_17": "OFF"
+            }
+        },
+        {
+            "name": "lin-test-cpp17",
+            "generator": "Unix Makefiles",
+            "binaryDir": "${sourceDir}/build_lin",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Debug",
+                "MUSTEX_BUILD_TESTS": "ON",
+                "MUSTEX_TESTS_CXX_20": "OFF",
+                "MUSTEX_TESTS_CXX_17": "ON"
+            }
+        },
+        {
+            "name": "lin-test-cpp11",
+            "generator": "Unix Makefiles",
+            "binaryDir": "${sourceDir}/build_lin",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Debug",
+                "MUSTEX_BUILD_TESTS": "ON",
+                "MUSTEX_TESTS_CXX_20": "OFF",
                 "MUSTEX_TESTS_CXX_17": "OFF"
             }
         },
@@ -36,11 +54,19 @@
     ],
     "buildPresets": [
         {
-            "name": "lin",
-            "configurePreset": "lin",
-            "targets": [
-                "mustex_tests"
-            ]
+            "name": "lin-test-cpp20",
+            "configurePreset": "lin-test-cpp20",
+            "jobs": 12
+        },
+        {
+            "name": "lin-test-cpp17",
+            "configurePreset": "lin-test-cpp17",
+            "jobs": 12
+        },
+        {
+            "name": "lin-test-cpp11",
+            "configurePreset": "lin-test-cpp11",
+            "jobs": 12
         },
         {
             "name": "win-vs16-2019",
@@ -49,6 +75,20 @@
                 "mustex_tests"
             ],
             "configuration": "RelWithDebInfo"
+        }
+    ],
+    "testPresets": [
+        {
+            "name": "lin-test-cpp20",
+            "configurePreset": "lin-test-cpp20"
+        },
+        {
+            "name": "lin-test-cpp17",
+            "configurePreset": "lin-test-cpp17"
+        },
+        {
+            "name": "lin-test-cpp11",
+            "configurePreset": "lin-test-cpp11"
         }
     ]
 }
