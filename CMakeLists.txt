@@ -12,6 +12,7 @@ add_library(${BCX_MUSTEX_TARGET_NAME} INTERFACE)
 target_include_directories(${BCX_MUSTEX_TARGET_NAME} INTERFACE include)
 
 if(MUSTEX_BUILD_TESTS)
+    # Setup unit tests with catch 2
     Include(FetchContent)
 
     set(TESTS_TARGET mustex_tests)
@@ -37,4 +38,11 @@ if(MUSTEX_BUILD_TESTS)
 
     find_package(Threads REQUIRED)
     target_link_libraries(${TESTS_TARGET} PRIVATE Threads::Threads)
+
+    # Register catch tests to CTest
+    list(APPEND CMAKE_MODULE_PATH ${catch2_SOURCE_DIR}/extras)
+    include(CTest)
+    include(Catch)
+    enable_testing()
+    catch_discover_tests(${TESTS_TARGET})
 endif(MUSTEX_BUILD_TESTS)
