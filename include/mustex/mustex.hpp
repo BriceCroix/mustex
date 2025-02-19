@@ -138,11 +138,11 @@ public:
         return MustexHandle<const T, std::shared_lock<MustexMutexType>>(std::ref(m_mutex), m_data);
     }
 
-    std::optional<MustexHandle<T, std::shared_lock<MustexMutexType>>> try_lock() const
+    std::optional<MustexHandle<const T, std::shared_lock<MustexMutexType>>> try_lock() const
     {
         std::shared_lock lock(m_mutex, std::try_to_lock);
         if (lock.owns_lock())
-            return MustexHandle<T, std::shared_lock<MustexMutexType>>(std::move(lock), m_data);
+            return MustexHandle<const T, std::shared_lock<MustexMutexType>>(std::move(lock), m_data);
         return {};
     }
 
