@@ -68,7 +68,7 @@ TEST_CASE("Lock mustex readonly twice", "[mustex]")
 {
     Mustex<int> m(42);
 
-    auto tic = std::chrono::system_clock::now();
+    auto tic = std::chrono::high_resolution_clock::now();
 
     auto future = std::async(
         std::launch::async,
@@ -92,7 +92,7 @@ TEST_CASE("Lock mustex readonly twice", "[mustex]")
     future.wait();
     future2.wait();
 
-    auto tac = std::chrono::system_clock::now();
+    auto tac = std::chrono::high_resolution_clock::now();
     REQUIRE(tac - tic < std::chrono::milliseconds(150));
 }
 
@@ -100,7 +100,7 @@ TEST_CASE("Lock mustex mutably while locked readonly", "[mustex]")
 {
     Mustex<int> m(42);
 
-    auto tic = std::chrono::system_clock::now();
+    auto tic = std::chrono::high_resolution_clock::now();
 
     auto future = std::async(
         std::launch::async,
@@ -126,7 +126,7 @@ TEST_CASE("Lock mustex mutably while locked readonly", "[mustex]")
     future.wait();
     future2.wait();
 
-    auto tac = std::chrono::system_clock::now();
+    auto tac = std::chrono::high_resolution_clock::now();
     REQUIRE(tac - tic >= std::chrono::milliseconds(200));
 }
 
@@ -134,7 +134,7 @@ TEST_CASE("Lock mustex readonly while locked mutably", "[mustex]")
 {
     Mustex<int> m(42);
 
-    auto tic = std::chrono::system_clock::now();
+    auto tic = std::chrono::high_resolution_clock::now();
 
     auto future = std::async(
         std::launch::async,
@@ -161,7 +161,7 @@ TEST_CASE("Lock mustex readonly while locked mutably", "[mustex]")
     future.wait();
     future2.wait();
 
-    auto tac = std::chrono::system_clock::now();
+    auto tac = std::chrono::high_resolution_clock::now();
     REQUIRE(tac - tic >= std::chrono::milliseconds(200));
 }
 #endif // #if __cplusplus >= 201703L
@@ -170,7 +170,7 @@ TEST_CASE("Lock mustex mutably while locked mutably", "[mustex]")
 {
     Mustex<int> m(42);
 
-    auto tic = std::chrono::system_clock::now();
+    auto tic = std::chrono::high_resolution_clock::now();
 
     auto future = std::async(
         std::launch::async,
@@ -198,7 +198,7 @@ TEST_CASE("Lock mustex mutably while locked mutably", "[mustex]")
     future.wait();
     future2.wait();
 
-    auto tac = std::chrono::system_clock::now();
+    auto tac = std::chrono::high_resolution_clock::now();
     REQUIRE(tac - tic >= std::chrono::milliseconds(200));
 }
 
