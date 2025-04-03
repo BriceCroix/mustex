@@ -40,8 +40,18 @@
             }
         },
         {
-            "name": "win-vs16-2019",
-            "displayName": "Windows VS16 2019",
+            "name": "win-vs17-2022-cpp20",
+            "generator": "Visual Studio 17 2022",
+            "architecture": "x64",
+            "binaryDir": "${sourceDir}/build_win",
+            "cacheVariables": {
+                "MUSTEX_BUILD_TESTS": "ON",
+                "MUSTEX_TESTS_CXX_20": "ON",
+                "MUSTEX_TESTS_CXX_17": "OFF"
+            }
+        },
+        {
+            "name": "win-vs16-2019-cpp17",
             "generator": "Visual Studio 16 2019",
             "architecture": "x64",
             "binaryDir": "${sourceDir}/build_win",
@@ -69,11 +79,13 @@
             "jobs": 12
         },
         {
-            "name": "win-vs16-2019",
-            "configurePreset": "win-vs16-2019",
-            "targets": [
-                "mustex_tests"
-            ],
+            "name": "win-vs17-2022-cpp20",
+            "configurePreset": "win-vs17-2022-cpp20",
+            "configuration": "RelWithDebInfo"
+        },
+        {
+            "name": "win-vs16-2019-cpp17",
+            "configurePreset": "win-vs16-2019-cpp17",
             "configuration": "RelWithDebInfo"
         }
     ],
@@ -89,6 +101,16 @@
         {
             "name": "lin-test-cpp11",
             "configurePreset": "lin-test-cpp11"
+        },
+        {
+            "name": "win-vs17-2022-cpp20",
+            "configurePreset": "win-vs17-2022-cpp20",
+            "configuration": "RelWithDebInfo"
+        },
+        {
+            "name": "win-vs16-2019-cpp17",
+            "configurePreset": "win-vs16-2019-cpp17",
+            "configuration": "RelWithDebInfo"
         }
     ]
 }
