@@ -5,14 +5,18 @@
 #    include <concepts>
 #endif // #if __cplusplus >= 202002L
 
-#if __cplusplus >= 201103L && __cplusplus < 201703L
-#    include <mutex>
-#elif __cplusplus >= 201703L
+#if __cplusplus >= 201703L
 #    include <optional>
 #    include <shared_mutex>
-#else
+#endif // __cplusplus >= 201703L
+
+#if __cplusplus >= 201103L
+#    include <mutex>
+#endif // __cplusplus >= 201103L
+
+#if __cplusplus < 201103L
 #    error Unsupported C++ standard.
-#endif
+#endif // __cplusplus < 201103L
 
 namespace bcx
 {
