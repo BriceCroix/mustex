@@ -295,3 +295,32 @@ TEST_CASE("Copy mustex used mutably", "[mustex]")
     REQUIRE(tac - tic >= std::chrono::milliseconds(100));
 }
 #endif // #if __cplusplus >= 202002L
+
+#if __cplusplus >= 202002L
+TEST_CASE("Copy mustex used readonly", "[mustex]")
+{
+    auto tic = std::chrono::high_resolution_clock::now();
+
+    Mustex<int> m(42);
+
+    std::atomic<bool> started = false;
+    auto future = std::async(
+        std::launch::async,
+        [&m, &started]
+        {
+            auto handle = m.lock();
+            started = true;
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        });
+    // Make sure the future starts.
+    while (!started)
+        ;
+
+    decltype(m) m2(m);
+
+    REQUIRE(*m2.lock() == 42);
+
+    auto tac = std::chrono::high_resolution_clock::now();
+    REQUIRE(tac - tic < std::chrono::milliseconds(100));
+}
+#endif // #if __cplusplus >= 202002L
