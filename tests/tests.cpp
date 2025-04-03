@@ -102,17 +102,19 @@ TEST_CASE("Lock mustex mutably while locked readonly", "[mustex]")
 
     auto tic = std::chrono::high_resolution_clock::now();
 
+    std::atomic<bool> started{false};
     auto future = std::async(
         std::launch::async,
-        [&m]
+        [&m, &started]
         {
             auto handle = m.lock();
+            started = true;
             REQUIRE(*handle == 42);
             std::this_thread::sleep_for(std::chrono::milliseconds(100));
-        }
-    );
+        });
     // Make sure the future starts.
-    std::this_thread::sleep_for(std::chrono::milliseconds(0));
+    while (!started)
+        ;
 
     auto future2 = std::async(
         std::launch::async,
@@ -136,18 +138,20 @@ TEST_CASE("Lock mustex readonly while locked mutably", "[mustex]")
 
     auto tic = std::chrono::high_resolution_clock::now();
 
+    std::atomic<bool> started{false};
     auto future = std::async(
         std::launch::async,
-        [&m]
+        [&m, &started]
         {
             auto handle = m.lock_mut();
+            started = true;
             REQUIRE(*handle == 42);
             *handle = 15;
             std::this_thread::sleep_for(std::chrono::milliseconds(100));
-        }
-    );
+        });
     // Make sure the future starts.
-    std::this_thread::sleep_for(std::chrono::milliseconds(0));
+    while (!started)
+        ;
 
     auto future2 = std::async(
         std::launch::async,
@@ -172,18 +176,20 @@ TEST_CASE("Lock mustex mutably while locked mutably", "[mustex]")
 
     auto tic = std::chrono::high_resolution_clock::now();
 
+    std::atomic<bool> started{false};
     auto future = std::async(
         std::launch::async,
-        [&m]
+        [&m, &started]
         {
             auto handle = m.lock_mut();
+            started = true;
             REQUIRE(*handle == 42);
             *handle = 15;
             std::this_thread::sleep_for(std::chrono::milliseconds(100));
-        }
-    );
+        });
     // Make sure the future starts.
-    std::this_thread::sleep_for(std::chrono::milliseconds(0));
+    while (!started)
+        ;
 
     auto future2 = std::async(
         std::launch::async,
@@ -274,7 +280,7 @@ TEST_CASE("Copy mustex used mutably", "[mustex]")
 
     Mustex<int> m(42);
 
-    std::atomic<bool> started = false;
+    std::atomic<bool> started{false};
     auto future = std::async(
         std::launch::async,
         [&m, &started]
@@ -303,7 +309,7 @@ TEST_CASE("Copy mustex used readonly", "[mustex]")
 
     Mustex<int> m(42);
 
-    std::atomic<bool> started = false;
+    std::atomic<bool> started{false};
     auto future = std::async(
         std::launch::async,
         [&m, &started]
