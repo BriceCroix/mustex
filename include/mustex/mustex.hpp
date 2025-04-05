@@ -45,13 +45,17 @@ namespace bcx
 {
 
 #ifdef _MUSTEX_HAS_SHARED_MUTEX
+template<class M>
+using DefaultMustedReadLock = std::shared_lock<M>;
 using DefaultMustexMutex = std::shared_mutex;
-using DefaultMustedReadLock = std::shared_lock<DefaultMustexMutex>;
 #else
+template<class M>
+using DefaultMustedReadLock = std::unique_lock<M>;
 using DefaultMustexMutex = std::mutex;
-using DefaultMustedReadLock = std::unique_lock<DefaultMustexMutex>;
 #endif
-using DefaultMustexWriteLock = std::unique_lock<DefaultMustexMutex>;
+
+template<class M>
+using DefaultMustexWriteLock = std::unique_lock<M>;
 
 template<typename T, class M, class RL, class WL>
 class Mustex;
@@ -111,7 +115,7 @@ private:
 /// @tparam M Type of synchronization mutex.
 /// @tparam RL Type of lock used for read-accesses.
 /// @tparam WL Type of lock used for write-accesses.
-template<class T, class M = bcx::DefaultMustexMutex, class RL = DefaultMustedReadLock, class WL = DefaultMustexWriteLock>
+template<class T, class M = bcx::DefaultMustexMutex, class RL = DefaultMustedReadLock<M>, class WL = DefaultMustexWriteLock<M>>
 class Mustex
 {
 public:
