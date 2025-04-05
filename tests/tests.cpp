@@ -27,14 +27,14 @@ TEST_CASE("Construct mustex", "[mustex]")
     REQUIRE_NOTHROW(Mustex<int>(int{}));
 }
 
-#if __cplusplus >= 201703L
+#ifdef _MUSTEX_HAS_SHARED_MUTEX
 TEST_CASE("Lock mustex", "[mustex]")
 {
     Mustex<int> m(42);
     auto handle = m.lock();
     REQUIRE(*handle == 42);
 }
-#endif // #if __cplusplus >= 201703L
+#endif // #ifdef _MUSTEX_HAS_SHARED_MUTEX
 
 TEST_CASE("Lock mustex mutably", "[mustex]")
 {
@@ -45,14 +45,14 @@ TEST_CASE("Lock mustex mutably", "[mustex]")
     REQUIRE(*handle == 8);
 }
 
-#if __cplusplus >= 201703L
+#ifdef _MUSTEX_HAS_SHARED_MUTEX
 TEST_CASE("Access mustex readonly", "[mustex]")
 {
     Mustex<MyClass> m(MyClass(111));
     auto handle = m.lock();
     REQUIRE(handle->do_things() == 222);
 }
-#endif // #if __cplusplus >= 201703L
+#endif // #ifdef _MUSTEX_HAS_SHARED_MUTEX
 
 TEST_CASE("Access mustex mutably", "[mustex]")
 {
@@ -63,7 +63,7 @@ TEST_CASE("Access mustex mutably", "[mustex]")
     REQUIRE(handle->do_things() == 666);
 }
 
-#if __cplusplus >= 201703L
+#ifdef _MUSTEX_HAS_SHARED_MUTEX
 TEST_CASE("Lock mustex readonly twice", "[mustex]")
 {
     Mustex<int> m(42);
@@ -168,7 +168,7 @@ TEST_CASE("Lock mustex readonly while locked mutably", "[mustex]")
     auto tac = std::chrono::high_resolution_clock::now();
     REQUIRE(tac - tic >= std::chrono::milliseconds(200));
 }
-#endif // #if __cplusplus >= 201703L
+#endif // #ifdef _MUSTEX_HAS_SHARED_MUTEX
 
 TEST_CASE("Lock mustex mutably while locked mutably", "[mustex]")
 {
@@ -222,7 +222,7 @@ TEST_CASE("Try lock mutably", "[mustex]")
     REQUIRE_FALSE(opt_handle2);
 }
 
-#if __cplusplus >= 201703L
+#ifdef _MUSTEX_HAS_SHARED_MUTEX
 TEST_CASE("Try lock", "[mustex]")
 {
     Mustex<int> m(42);
@@ -238,7 +238,7 @@ TEST_CASE("Try lock", "[mustex]")
     auto opt_handle3 = m.try_lock_mut();
     REQUIRE_FALSE(opt_handle3.has_value());
 }
-#endif // #if __cplusplus >= 201703L
+#endif // #ifdef _MUSTEX_HAS_SHARED_MUTEX
 
 TEST_CASE("Transfer handle ownership mutably", "[mustex]")
 {
@@ -250,7 +250,7 @@ TEST_CASE("Transfer handle ownership mutably", "[mustex]")
     REQUIRE(*handle2 == 42);
 }
 
-#if __cplusplus >= 201703L
+#ifdef _MUSTEX_HAS_SHARED_MUTEX
 TEST_CASE("Transfer handle ownership", "[mustex]")
 {
     Mustex<int> m(42);
@@ -260,9 +260,9 @@ TEST_CASE("Transfer handle ownership", "[mustex]")
 
     REQUIRE(*handle2 == 42);
 }
-#endif // #if __cplusplus >= 201703L
+#endif // #ifdef _MUSTEX_HAS_SHARED_MUTEX
 
-#if __cplusplus >= 202002L
+#ifdef _MUSTEX_HAS_CONCEPTS
 TEST_CASE("Copy mustex unused", "[mustex]")
 {
     Mustex<int> m(42);
@@ -271,9 +271,9 @@ TEST_CASE("Copy mustex unused", "[mustex]")
     REQUIRE(*m.lock() == 42);
     REQUIRE(*m2.lock() == 42);
 }
-#endif // #if __cplusplus >= 202002L
+#endif // #ifdef _MUSTEX_HAS_CONCEPTS
 
-#if __cplusplus >= 202002L
+#ifdef _MUSTEX_HAS_CONCEPTS
 TEST_CASE("Copy mustex used mutably", "[mustex]")
 {
     auto tic = std::chrono::high_resolution_clock::now();
@@ -300,9 +300,9 @@ TEST_CASE("Copy mustex used mutably", "[mustex]")
     auto tac = std::chrono::high_resolution_clock::now();
     REQUIRE(tac - tic >= std::chrono::milliseconds(100));
 }
-#endif // #if __cplusplus >= 202002L
+#endif // #ifdef _MUSTEX_HAS_CONCEPTS
 
-#if __cplusplus >= 202002L
+#ifdef _MUSTEX_HAS_CONCEPTS
 TEST_CASE("Copy mustex used readonly", "[mustex]")
 {
     auto tic = std::chrono::high_resolution_clock::now();
@@ -329,4 +329,4 @@ TEST_CASE("Copy mustex used readonly", "[mustex]")
     auto tac = std::chrono::high_resolution_clock::now();
     REQUIRE(tac - tic < std::chrono::milliseconds(100));
 }
-#endif // #if __cplusplus >= 202002L
+#endif // #ifdef _MUSTEX_HAS_CONCEPTS

@@ -1,37 +1,55 @@
 #ifndef BCX_MUSTEX_HPP
 #define BCX_MUSTEX_HPP
 
-#ifdef __cpp_concepts
+// This should be true for C++20 and above
+#if defined(__has_include) && __has_include(<version>)
+#    include <version>
+#    if defined(__cpp_concepts)
+#        define _MUSTEX_HAS_CONCEPTS
+#    endif
+#    if defined(__cpp_lib_optional)
+#        define _MUSTEX_HAS_OPTIONAL
+#    endif
+#    if defined(__cpp_lib_shared_mutex)
+#        define _MUSTEX_HAS_SHARED_MUTEX
+#    endif
+#else // #if defined(__has_include) && __has_include(<version>)
+#    if defined(__cplusplus) && __cplusplus >= 202002LL
+#        define _MUSTEX_HAS_CONCEPTS
+#    endif
+#    if defined(__cplusplus) && __cplusplus >= 201703L
+#        define _MUSTEX_HAS_OPTIONAL
+#    endif
+#    if defined(__cplusplus) && __cplusplus >= 201703L
+#        define _MUSTEX_HAS_SHARED_MUTEX
+#    endif
+#endif // #if defined(__has_include) && __has_include(<version>)
+
+#ifdef _MUSTEX_HAS_CONCEPTS
 #    include <concepts>
-#endif // #ifdef __cpp_concepts
+#endif // #ifdef _MUSTEX_HAS_CONCEPTS
 
-#ifdef __cpp_lib_optional
+#ifdef _MUSTEX_HAS_OPTIONAL
 #    include <optional>
-#else
+#else // #ifdef _MUSTEX_HAS_OPTIONAL
 #    include <memory>
-#endif // #ifdef __cpp_lib_optional
+#endif // #ifdef _MUSTEX_HAS_OPTIONAL
 
-#if __cplusplus >= 201703L
+#ifdef _MUSTEX_HAS_SHARED_MUTEX
 #    include <shared_mutex>
-#endif // __cplusplus >= 201703L
+#endif // #ifdef _MUSTEX_HAS_SHARED_MUTEX
 
-#if __cplusplus >= 201103L
-#    include <mutex>
-#endif // __cplusplus >= 201103L
-
-#if __cplusplus < 201103L
-#    error Unsupported C++ standard.
-#endif // __cplusplus < 201103L
+#include <mutex>
 
 namespace bcx
 {
 
 using MustexMutexType =
-#if __cplusplus >= 201703L
+#ifdef _MUSTEX_HAS_SHARED_MUTEX
     std::shared_mutex
 #else
     std::mutex
-#endif // #if __cplusplus >= 201703L
+#endif
     ;
 
 template<typename T>
@@ -91,7 +109,7 @@ class Mustex
 {
 public:
     template<typename... Args>
-#ifdef __cpp_concepts
+#ifdef _MUSTEX_HAS_CONCEPTS
         // Prevent from using this constructor when argument is a mustex (ref or moved)
         requires(!std::is_same_v<Mustex, std::remove_cvref_t<Args>> && ...)
 #endif // #ifdef __cpp_concepts
@@ -101,7 +119,7 @@ public:
     {
     }
 
-#ifdef __cpp_concepts
+#ifdef _MUSTEX_HAS_CONCEPTS
     Mustex(const Mustex &other)
         requires std::is_copy_constructible<T>::value
         : m_data(*other.lock())
@@ -127,7 +145,7 @@ public:
         std::unique_lock lock(m_mutex);
         m_data = std::move(*other.lock_mut());
     }
-#else // #ifdef __cpp_concepts
+#else  // #ifdef _MUSTEX_HAS_CONCEPTS
     // Without c++20 these cannot be simply conditionally defined.
     // See this great article as of why : https://akrzemi1.wordpress.com/2015/03/02/a-conditional-copy-constructor/
     // The workaround is to construct Mustex after locking the other :
@@ -139,11 +157,11 @@ public:
     Mustex(Mustex &&other) = delete;
     Mustex &operator=(const Mustex &other) = delete;
     Mustex &operator=(Mustex &&other) = delete;
-#endif // #ifdef __cpp_concepts
+#endif // #ifdef _MUSTEX_HAS_CONCEPTS
 
     virtual ~Mustex() = default;
 
-#if __cplusplus >= 201703L
+#ifdef _MUSTEX_HAS_SHARED_MUTEX
     MustexHandle<const T, std::shared_lock<MustexMutexType>> lock() const
     {
         return MustexHandle<const T, std::shared_lock<MustexMutexType>>(std::ref(m_mutex), m_data);
@@ -156,9 +174,9 @@ public:
             return MustexHandle<const T, std::shared_lock<MustexMutexType>>(std::move(lock), m_data);
         return {};
     }
-#endif // #if __cplusplus >= 201703L
+#endif // #ifdef _MUSTEX_HAS_SHARED_MUTEX
 
-#ifdef __cpp_lib_optional
+#ifdef _MUSTEX_HAS_OPTIONAL
     std::optional<MustexHandle<T, std::unique_lock<MustexMutexType>>> try_lock_mut()
     {
         std::unique_lock lock(m_mutex, std::try_to_lock);
@@ -166,7 +184,7 @@ public:
             return MustexHandle<T, std::unique_lock<MustexMutexType>>(std::move(lock), m_data);
         return {};
     }
-#else
+#else  // #ifdef _MUSTEX_HAS_OPTIONAL
     std::unique_ptr<MustexHandle<T, std::unique_lock<MustexMutexType>>> try_lock_mut()
     {
         std::unique_lock<decltype(m_mutex)> lock(m_mutex, std::try_to_lock);
@@ -176,7 +194,7 @@ public:
             );
         return {};
     }
-#endif // #ifdef __cpp_lib_optional
+#endif // #ifdef _MUSTEX_HAS_OPTIONAL
 
     MustexHandle<T, std::unique_lock<MustexMutexType>> lock_mut()
     {
