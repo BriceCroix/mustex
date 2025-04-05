@@ -113,11 +113,13 @@ public:
     Mustex &operator=(const Mustex &other)
         requires std::is_assignable<T, const T &>::value
     {
+        std::unique_lock lock(m_mutex);
         m_data = *other.lock();
     }
     Mustex &operator=(Mustex &&other)
         requires std::is_assignable<T, T &&>::value
     {
+        std::unique_lock lock(m_mutex);
         m_data = std::move(*other.lock_mut());
     }
 #else // #ifdef __cpp_concepts
