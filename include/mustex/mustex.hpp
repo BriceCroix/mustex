@@ -171,12 +171,12 @@ public:
 
     virtual ~Mustex() = default;
 
-#ifdef _MUSTEX_HAS_SHARED_MUTEX
     MustexHandle<const T, RL, Mustex> lock() const
     {
         return MustexHandle<const T, RL, Mustex>(RL(m_mutex), m_data);
     }
 
+#ifdef _MUSTEX_HAS_OPTIONAL
     std::optional<MustexHandle<const T, RL, Mustex>> try_lock() const
     {
         RL lock(m_mutex, std::try_to_lock);
@@ -184,7 +184,16 @@ public:
             return MustexHandle<const T, RL, Mustex>(std::move(lock), m_data);
         return {};
     }
-#endif // #ifdef _MUSTEX_HAS_SHARED_MUTEX
+#else // #ifdef _MUSTEX_HAS_OPTIONAL
+    std::unique_ptr<MustexHandle<T, RL, Mustex>> try_lock()
+    {
+        RL lock(m_mutex, std::try_to_lock);
+        if (lock.owns_lock())
+            return std::unique_ptr<MustexHandle<T, RL, Mustex>>(
+                new MustexHandle<T, RL, Mustex>(std::move(lock), m_data));
+        return {};
+    }
+#endif // #ifdef _MUSTEX_HAS_OPTIONAL
 
     MustexHandle<T, WL, Mustex> lock_mut()
     {
