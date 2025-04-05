@@ -208,21 +208,21 @@ TEST_CASE("Lock mustex mutably while locked mutably", "[mustex]")
     REQUIRE(tac - tic >= std::chrono::milliseconds(200));
 }
 
-#if __cplusplus >= 201703L
 TEST_CASE("Try lock mutably", "[mustex]")
 {
     Mustex<int> m(42);
 
     auto opt_handle = m.try_lock_mut();
-    REQUIRE(opt_handle.has_value());
-    REQUIRE(*opt_handle.value() == 42);
-    *opt_handle.value() = 45;
-    REQUIRE(*opt_handle.value() == 45);
+    REQUIRE(opt_handle);
+    REQUIRE(**opt_handle == 42);
+    **opt_handle = 45;
+    REQUIRE(**opt_handle == 45);
 
     auto opt_handle2 = m.try_lock_mut();
-    REQUIRE_FALSE(opt_handle2.has_value());
+    REQUIRE_FALSE(opt_handle2);
 }
 
+#if __cplusplus >= 201703L
 TEST_CASE("Try lock", "[mustex]")
 {
     Mustex<int> m(42);

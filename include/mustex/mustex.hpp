@@ -7,6 +7,8 @@
 
 #ifdef __cpp_lib_optional
 #    include <optional>
+#else
+#    include <memory>
 #endif // #ifdef __cpp_lib_optional
 
 #if __cplusplus >= 201703L
@@ -162,6 +164,16 @@ public:
         std::unique_lock lock(m_mutex, std::try_to_lock);
         if (lock.owns_lock())
             return MustexHandle<T, std::unique_lock<MustexMutexType>>(std::move(lock), m_data);
+        return {};
+    }
+#else
+    std::unique_ptr<MustexHandle<T, std::unique_lock<MustexMutexType>>> try_lock_mut()
+    {
+        std::unique_lock<decltype(m_mutex)> lock(m_mutex, std::try_to_lock);
+        if (lock.owns_lock())
+            return std::unique_ptr<MustexHandle<T, std::unique_lock<MustexMutexType>>>(
+                new MustexHandle<T, std::unique_lock<MustexMutexType>>(std::move(lock), m_data)
+            );
         return {};
     }
 #endif // #ifdef __cpp_lib_optional
