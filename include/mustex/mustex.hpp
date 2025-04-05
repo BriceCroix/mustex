@@ -185,12 +185,12 @@ public:
         return {};
     }
 #else // #ifdef _MUSTEX_HAS_OPTIONAL
-    std::unique_ptr<MustexHandle<T, RL, Mustex>> try_lock()
+    std::unique_ptr<MustexHandle<const T, RL, Mustex>> try_lock() const
     {
         RL lock(m_mutex, std::try_to_lock);
         if (lock.owns_lock())
-            return std::unique_ptr<MustexHandle<T, RL, Mustex>>(
-                new MustexHandle<T, RL, Mustex>(std::move(lock), m_data));
+            return std::unique_ptr<MustexHandle<const T, RL, Mustex>>(
+                new MustexHandle<const T, RL, Mustex>(std::move(lock), m_data));
         return {};
     }
 #endif // #ifdef _MUSTEX_HAS_OPTIONAL
