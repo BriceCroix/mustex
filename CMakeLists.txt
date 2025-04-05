@@ -21,11 +21,11 @@ if(MUSTEX_BUILD_TESTS)
     target_link_libraries(${TESTS_TARGET} PRIVATE ${BCX_MUSTEX_TARGET_NAME})
 
     if(MUSTEX_TESTS_CXX_20)
-        target_compile_features(${TESTS_TARGET} PUBLIC cxx_std_20)
+        set_property(TARGET ${TESTS_TARGET} PROPERTY CXX_STANDARD 20)
     elseif(MUSTEX_TESTS_CXX_17)
-        target_compile_features(${TESTS_TARGET} PUBLIC cxx_std_17)
+        set_property(TARGET ${TESTS_TARGET} PROPERTY CXX_STANDARD 17)
     else()
-        target_compile_features(${TESTS_TARGET} PUBLIC cxx_std_11)
+        set_property(TARGET ${TESTS_TARGET} PROPERTY CXX_STANDARD 11)
     endif()
 
     # /Zc:__cplusplus is required to make __cplusplus accurate
