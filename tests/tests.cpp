@@ -27,14 +27,12 @@ TEST_CASE("Construct mustex", "[mustex]")
     REQUIRE_NOTHROW(Mustex<int>(int{}));
 }
 
-#ifdef _MUSTEX_HAS_SHARED_MUTEX
 TEST_CASE("Lock mustex", "[mustex]")
 {
     Mustex<int> m(42);
     auto handle = m.lock();
     REQUIRE(*handle == 42);
 }
-#endif // #ifdef _MUSTEX_HAS_SHARED_MUTEX
 
 TEST_CASE("Lock mustex mutably", "[mustex]")
 {
@@ -45,14 +43,12 @@ TEST_CASE("Lock mustex mutably", "[mustex]")
     REQUIRE(*handle == 8);
 }
 
-#ifdef _MUSTEX_HAS_SHARED_MUTEX
 TEST_CASE("Access mustex readonly", "[mustex]")
 {
     Mustex<MyClass> m(MyClass(111));
     auto handle = m.lock();
     REQUIRE(handle->do_things() == 222);
 }
-#endif // #ifdef _MUSTEX_HAS_SHARED_MUTEX
 
 TEST_CASE("Access mustex mutably", "[mustex]")
 {
@@ -63,7 +59,6 @@ TEST_CASE("Access mustex mutably", "[mustex]")
     REQUIRE(handle->do_things() == 666);
 }
 
-#ifdef _MUSTEX_HAS_SHARED_MUTEX
 TEST_CASE("Lock mustex readonly twice", "[mustex]")
 {
     Mustex<int> m(42);
@@ -93,7 +88,11 @@ TEST_CASE("Lock mustex readonly twice", "[mustex]")
     future2.wait();
 
     auto tac = std::chrono::high_resolution_clock::now();
+#ifdef _MUSTEX_HAS_SHARED_MUTEX
     REQUIRE(tac - tic < std::chrono::milliseconds(150));
+#else  // #ifdef _MUSTEX_HAS_SHARED_MUTEX
+    REQUIRE(tac - tic >= std::chrono::milliseconds(200));
+#endif // #ifdef _MUSTEX_HAS_SHARED_MUTEX
 }
 
 TEST_CASE("Lock mustex mutably while locked readonly", "[mustex]")
@@ -168,7 +167,6 @@ TEST_CASE("Lock mustex readonly while locked mutably", "[mustex]")
     auto tac = std::chrono::high_resolution_clock::now();
     REQUIRE(tac - tic >= std::chrono::milliseconds(200));
 }
-#endif // #ifdef _MUSTEX_HAS_SHARED_MUTEX
 
 TEST_CASE("Lock mustex mutably while locked mutably", "[mustex]")
 {
@@ -222,23 +220,25 @@ TEST_CASE("Try lock mutably", "[mustex]")
     REQUIRE_FALSE(opt_handle2);
 }
 
-#ifdef _MUSTEX_HAS_SHARED_MUTEX
 TEST_CASE("Try lock", "[mustex]")
 {
     Mustex<int> m(42);
-
+    
     auto opt_handle = m.try_lock();
-    REQUIRE(opt_handle.has_value());
-    REQUIRE(*opt_handle.value() == 42);
-
+    REQUIRE(opt_handle);
+    REQUIRE(**opt_handle == 42);
+    
     auto opt_handle2 = m.try_lock();
-    REQUIRE(opt_handle2.has_value());
-    REQUIRE(*opt_handle2.value() == 42);
+#ifdef _MUSTEX_HAS_SHARED_MUTEX
+    REQUIRE(opt_handle2);
+    REQUIRE(**opt_handle2 == 42);
+#else
+    REQUIRE_FALSE(opt_handle2);
+#endif // #ifdef _MUSTEX_HAS_SHARED_MUTEX
 
     auto opt_handle3 = m.try_lock_mut();
-    REQUIRE_FALSE(opt_handle3.has_value());
+    REQUIRE_FALSE(opt_handle3);
 }
-#endif // #ifdef _MUSTEX_HAS_SHARED_MUTEX
 
 TEST_CASE("Transfer handle ownership mutably", "[mustex]")
 {
@@ -250,17 +250,15 @@ TEST_CASE("Transfer handle ownership mutably", "[mustex]")
     REQUIRE(*handle2 == 42);
 }
 
-#ifdef _MUSTEX_HAS_SHARED_MUTEX
 TEST_CASE("Transfer handle ownership", "[mustex]")
 {
     Mustex<int> m(42);
 
     auto handle = m.lock();
-    MustexHandle handle2(std::move(handle));
+    decltype(handle) handle2(std::move(handle));
 
     REQUIRE(*handle2 == 42);
 }
-#endif // #ifdef _MUSTEX_HAS_SHARED_MUTEX
 
 #ifdef _MUSTEX_HAS_CONCEPTS
 TEST_CASE("Copy mustex unused", "[mustex]")
