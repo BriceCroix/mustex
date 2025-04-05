@@ -55,7 +55,10 @@ using MustexMutexType =
 template<typename T>
 class Mustex;
 
-template<typename T, typename L>
+/// @brief Allow to access Mustex data, mutably or not depending on method used to construct.
+/// @tparam T Type of data to be accessed, potentially const-qualified.
+/// @tparam L Type of lock owned by this class.
+template<typename T, class L>
 class MustexHandle
 {
 public:
@@ -98,6 +101,9 @@ private:
     }
 };
 
+/// @brief Data-owning mutex class, allowing never to access shared data
+/// without thread synchronization.
+/// @tparam T The type of data to be shared among threads.
 template<class T>
 class Mustex
 {
