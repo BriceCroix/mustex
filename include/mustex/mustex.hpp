@@ -179,6 +179,11 @@ public:
     }
 #endif // #ifdef _MUSTEX_HAS_SHARED_MUTEX
 
+    MustexHandle<T, M, std::unique_lock<M>> lock_mut()
+    {
+        return MustexHandle<T, M, std::unique_lock<M>>(std::unique_lock<M>(m_mutex), m_data);
+    }
+
 #ifdef _MUSTEX_HAS_OPTIONAL
     std::optional<MustexHandle<T, M, std::unique_lock<M>>> try_lock_mut()
     {
@@ -197,11 +202,6 @@ public:
         return {};
     }
 #endif // #ifdef _MUSTEX_HAS_OPTIONAL
-
-    MustexHandle<T, M, std::unique_lock<M>> lock_mut()
-    {
-        return MustexHandle<T, M, std::unique_lock<M>>(std::unique_lock<M>(m_mutex), m_data);
-    }
 
 private:
     T m_data;
