@@ -45,14 +45,14 @@ namespace bcx
 {
 
 #ifdef _MUSTEX_HAS_SHARED_MUTEX
-template<class M>
+template <class M>
 using DefaultMustedReadLock = std::shared_lock<M>;
 using DefaultMustexMutex = std::shared_mutex;
-#else
-template<class M>
+#else // #ifdef _MUSTEX_HAS_SHARED_MUTEX
+template <class M>
 using DefaultMustedReadLock = std::unique_lock<M>;
 using DefaultMustexMutex = std::mutex;
-#endif
+#endif // #ifdef _MUSTEX_HAS_SHARED_MUTEX
 
 template<class M>
 using DefaultMustexWriteLock = std::unique_lock<M>;
@@ -155,7 +155,7 @@ public:
         WL lock(m_mutex);
         m_data = std::move(*other.lock_mut());
     }
-#else  // #ifdef _MUSTEX_HAS_CONCEPTS
+#else // #ifdef _MUSTEX_HAS_CONCEPTS
     // Without c++20 these cannot be simply conditionally defined.
     // See this great article as of why : https://akrzemi1.wordpress.com/2015/03/02/a-conditional-copy-constructor/
     // The workaround is to construct Mustex after locking the other :
