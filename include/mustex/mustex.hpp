@@ -62,15 +62,14 @@ class Mustex;
 
 /// @brief Allow to access Mustex data, mutably or not depending on method used to construct.
 /// @tparam T Type of data to be accessed, potentially const-qualified.
-/// @tparam M Type of synchronization mutex.
-/// @tparam RL Type of lock used for read-accesses.
-/// @tparam WL Type of lock used for write-accesses.
 /// @tparam L Type of lock owned by this class, equal to either WL.
-template<typename T, class M, class RL, class WL, class L>
+/// @tparam MX Type of owner Mustex.
+template <typename T, class L, class MX>
 class MustexHandle
 {
 public:
-    friend class Mustex<typename std::remove_const<T>::type, M, RL, WL>;
+    // Only parent Mustex can instantiate this class.
+    friend MX;
 
     MustexHandle() = delete;
     MustexHandle(const MustexHandle &) = delete;
@@ -173,40 +172,40 @@ public:
     virtual ~Mustex() = default;
 
 #ifdef _MUSTEX_HAS_SHARED_MUTEX
-    MustexHandle<const T, M, RL, WL, RL> lock() const
+    MustexHandle<const T, RL, Mustex> lock() const
     {
-        return MustexHandle<const T, M, RL, WL, RL>(RL(m_mutex), m_data);
+        return MustexHandle<const T, RL, Mustex>(RL(m_mutex), m_data);
     }
 
-    std::optional<MustexHandle<const T, M, RL, WL, RL>> try_lock() const
+    std::optional<MustexHandle<const T, RL, Mustex>> try_lock() const
     {
         RL lock(m_mutex, std::try_to_lock);
         if (lock.owns_lock())
-            return MustexHandle<const T, M, RL, WL, RL>(std::move(lock), m_data);
+            return MustexHandle<const T, RL, Mustex>(std::move(lock), m_data);
         return {};
     }
 #endif // #ifdef _MUSTEX_HAS_SHARED_MUTEX
 
-    MustexHandle<T, M, RL, WL, WL> lock_mut()
+    MustexHandle<T, WL, Mustex> lock_mut()
     {
-        return MustexHandle<T, M, RL, WL, WL>(WL(m_mutex), m_data);
+        return MustexHandle<T, WL, Mustex>(WL(m_mutex), m_data);
     }
 
 #ifdef _MUSTEX_HAS_OPTIONAL
-    std::optional<MustexHandle<T, M, RL, WL, WL>> try_lock_mut()
+    std::optional<MustexHandle<T, WL, Mustex>> try_lock_mut()
     {
         WL lock(m_mutex, std::try_to_lock);
         if (lock.owns_lock())
-            return MustexHandle<T, M, RL, WL, WL>(std::move(lock), m_data);
+            return MustexHandle<T, WL, Mustex>(std::move(lock), m_data);
         return {};
     }
 #else  // #ifdef _MUSTEX_HAS_OPTIONAL
-    std::unique_ptr<MustexHandle<T, M, RL, WL, WL>> try_lock_mut()
+    std::unique_ptr<MustexHandle<T, WL, Mustex>> try_lock_mut()
     {
         WL lock(m_mutex, std::try_to_lock);
         if (lock.owns_lock())
-            return std::unique_ptr<MustexHandle<T, M, RL, WL, WL>>(
-                new MustexHandle<T, M, RL, WL, WL>(std::move(lock), m_data));
+            return std::unique_ptr<MustexHandle<T, WL, Mustex>>(
+                new MustexHandle<T, WL, Mustex>(std::move(lock), m_data));
         return {};
     }
 #endif // #ifdef _MUSTEX_HAS_OPTIONAL
