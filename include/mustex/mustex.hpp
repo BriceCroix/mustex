@@ -91,12 +91,6 @@ private:
     L m_lock;
     T &m_data;
 
-    MustexHandle(MustexMutexType &mutex, T &data)
-        : m_lock(mutex)
-        , m_data{data}
-    {
-    }
-
     MustexHandle(L &&lock, T &data)
         : m_lock(std::move(lock))
         , m_data{data}
@@ -164,7 +158,7 @@ public:
 #ifdef _MUSTEX_HAS_SHARED_MUTEX
     MustexHandle<const T, std::shared_lock<MustexMutexType>> lock() const
     {
-        return MustexHandle<const T, std::shared_lock<MustexMutexType>>(std::ref(m_mutex), m_data);
+        return MustexHandle<const T, std::shared_lock<MustexMutexType>>(std::shared_lock(m_mutex), m_data);
     }
 
     std::optional<MustexHandle<const T, std::shared_lock<MustexMutexType>>> try_lock() const
@@ -198,7 +192,7 @@ public:
 
     MustexHandle<T, std::unique_lock<MustexMutexType>> lock_mut()
     {
-        return MustexHandle<T, std::unique_lock<MustexMutexType>>(std::ref(m_mutex), m_data);
+        return MustexHandle<T, std::unique_lock<MustexMutexType>>(std::unique_lock(m_mutex), m_data);
     }
 
 private:
