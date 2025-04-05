@@ -245,7 +245,7 @@ TEST_CASE("Transfer handle ownership mutably", "[mustex]")
     Mustex<int> m(42);
 
     auto handle = m.lock_mut();
-    MustexHandle<int, std::unique_lock<MustexMutexType>> handle2(std::move(handle));
+    decltype(handle) handle2(std::move(handle));
 
     REQUIRE(*handle2 == 42);
 }

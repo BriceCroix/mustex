@@ -44,7 +44,8 @@
 namespace bcx
 {
 
-using MustexMutexType =
+/// @brief The type of mutex used by @ref Mustex by default.
+using DefaultMustexMutex =
 #ifdef _MUSTEX_HAS_SHARED_MUTEX
     std::shared_mutex
 #else
@@ -52,17 +53,18 @@ using MustexMutexType =
 #endif
     ;
 
-template<typename T>
+template<typename T, class M>
 class Mustex;
 
 /// @brief Allow to access Mustex data, mutably or not depending on method used to construct.
 /// @tparam T Type of data to be accessed, potentially const-qualified.
+/// @tparam M Type of mutex in parent class.
 /// @tparam L Type of lock owned by this class.
-template<typename T, class L>
+template<typename T, class M, class L>
 class MustexHandle
 {
 public:
-    friend class Mustex<typename std::remove_const<T>::type>;
+    friend class Mustex<typename std::remove_const<T>::type, M>;
 
     MustexHandle() = delete;
     MustexHandle(const MustexHandle &) = delete;
@@ -104,7 +106,8 @@ private:
 /// @brief Data-owning mutex class, allowing never to access shared data
 /// without thread synchronization.
 /// @tparam T The type of data to be shared among threads.
-template<class T>
+/// @tparam M Type of synchronization mutex.
+template<class T, class M = bcx::DefaultMustexMutex>
 class Mustex
 {
 public:
@@ -162,48 +165,47 @@ public:
     virtual ~Mustex() = default;
 
 #ifdef _MUSTEX_HAS_SHARED_MUTEX
-    MustexHandle<const T, std::shared_lock<MustexMutexType>> lock() const
+    MustexHandle<const T, M, std::shared_lock<M>> lock() const
     {
-        return MustexHandle<const T, std::shared_lock<MustexMutexType>>(std::shared_lock(m_mutex), m_data);
+        return MustexHandle<const T, M, std::shared_lock<M>>(std::shared_lock(m_mutex), m_data);
     }
 
-    std::optional<MustexHandle<const T, std::shared_lock<MustexMutexType>>> try_lock() const
+    std::optional<MustexHandle<const T, M, std::shared_lock<M>>> try_lock() const
     {
-        std::shared_lock<MustexMutexType> lock(m_mutex, std::try_to_lock);
+        std::shared_lock<M> lock(m_mutex, std::try_to_lock);
         if (lock.owns_lock())
-            return MustexHandle<const T, std::shared_lock<MustexMutexType>>(std::move(lock), m_data);
+            return MustexHandle<const T, M, std::shared_lock<M>>(std::move(lock), m_data);
         return {};
     }
 #endif // #ifdef _MUSTEX_HAS_SHARED_MUTEX
 
 #ifdef _MUSTEX_HAS_OPTIONAL
-    std::optional<MustexHandle<T, std::unique_lock<MustexMutexType>>> try_lock_mut()
+    std::optional<MustexHandle<T, M, std::unique_lock<M>>> try_lock_mut()
     {
-        std::unique_lock<MustexMutexType> lock(m_mutex, std::try_to_lock);
+        std::unique_lock<M> lock(m_mutex, std::try_to_lock);
         if (lock.owns_lock())
-            return MustexHandle<T, std::unique_lock<MustexMutexType>>(std::move(lock), m_data);
+            return MustexHandle<T, M, std::unique_lock<M>>(std::move(lock), m_data);
         return {};
     }
 #else  // #ifdef _MUSTEX_HAS_OPTIONAL
-    std::unique_ptr<MustexHandle<T, std::unique_lock<MustexMutexType>>> try_lock_mut()
+    std::unique_ptr<MustexHandle<T, M, std::unique_lock<M>>> try_lock_mut()
     {
-        std::unique_lock<MustexMutexType> lock(m_mutex, std::try_to_lock);
+        std::unique_lock<M> lock(m_mutex, std::try_to_lock);
         if (lock.owns_lock())
-            return std::unique_ptr<MustexHandle<T, std::unique_lock<MustexMutexType>>>(
-                new MustexHandle<T, std::unique_lock<MustexMutexType>>(std::move(lock), m_data)
-            );
+            return std::unique_ptr<MustexHandle<T, M, std::unique_lock<M>>>(
+                new MustexHandle<T, M, std::unique_lock<M>>(std::move(lock), m_data));
         return {};
     }
 #endif // #ifdef _MUSTEX_HAS_OPTIONAL
 
-    MustexHandle<T, std::unique_lock<MustexMutexType>> lock_mut()
+    MustexHandle<T, M, std::unique_lock<M>> lock_mut()
     {
-        return MustexHandle<T, std::unique_lock<MustexMutexType>>(std::unique_lock<MustexMutexType>(m_mutex), m_data);
+        return MustexHandle<T, M, std::unique_lock<M>>(std::unique_lock<M>(m_mutex), m_data);
     }
 
 private:
     T m_data;
-    mutable MustexMutexType m_mutex;
+    mutable M m_mutex;
 };
 } // namespace bcx
 
