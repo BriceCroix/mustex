@@ -39,6 +39,12 @@ if(MUSTEX_BUILD_TESTS)
         target_compile_options(${TESTS_TARGET} PUBLIC "/Zc:__cplusplus")
     endif()
 
+    if(MSVC)
+        target_compile_options(${TESTS_TARGET} PRIVATE /W4 /WX)
+    else()
+        target_compile_options(${TESTS_TARGET} PRIVATE -Wall -Wextra -Wpedantic -Werror)
+    endif()
+
     FetchContent_Declare(
         Catch2
         GIT_REPOSITORY https://github.com/catchorg/Catch2.git
