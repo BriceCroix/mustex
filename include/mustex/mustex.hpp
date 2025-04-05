@@ -5,8 +5,11 @@
 #    include <concepts>
 #endif // #ifdef __cpp_concepts
 
-#if __cplusplus >= 201703L
+#ifdef __cpp_lib_optional
 #    include <optional>
+#endif // #ifdef __cpp_lib_optional
+
+#if __cplusplus >= 201703L
 #    include <shared_mutex>
 #endif // __cplusplus >= 201703L
 
@@ -151,7 +154,9 @@ public:
             return MustexHandle<const T, std::shared_lock<MustexMutexType>>(std::move(lock), m_data);
         return {};
     }
+#endif // #if __cplusplus >= 201703L
 
+#ifdef __cpp_lib_optional
     std::optional<MustexHandle<T, std::unique_lock<MustexMutexType>>> try_lock_mut()
     {
         std::unique_lock lock(m_mutex, std::try_to_lock);
@@ -159,7 +164,7 @@ public:
             return MustexHandle<T, std::unique_lock<MustexMutexType>>(std::move(lock), m_data);
         return {};
     }
-#endif // #if __cplusplus >= 201703L
+#endif // #ifdef __cpp_lib_optional
 
     MustexHandle<T, std::unique_lock<MustexMutexType>> lock_mut()
     {
