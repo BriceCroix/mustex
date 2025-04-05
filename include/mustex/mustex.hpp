@@ -163,7 +163,7 @@ public:
 
     std::optional<MustexHandle<const T, std::shared_lock<MustexMutexType>>> try_lock() const
     {
-        std::shared_lock lock(m_mutex, std::try_to_lock);
+        std::shared_lock<MustexMutexType> lock(m_mutex, std::try_to_lock);
         if (lock.owns_lock())
             return MustexHandle<const T, std::shared_lock<MustexMutexType>>(std::move(lock), m_data);
         return {};
@@ -173,7 +173,7 @@ public:
 #ifdef _MUSTEX_HAS_OPTIONAL
     std::optional<MustexHandle<T, std::unique_lock<MustexMutexType>>> try_lock_mut()
     {
-        std::unique_lock lock(m_mutex, std::try_to_lock);
+        std::unique_lock<MustexMutexType> lock(m_mutex, std::try_to_lock);
         if (lock.owns_lock())
             return MustexHandle<T, std::unique_lock<MustexMutexType>>(std::move(lock), m_data);
         return {};
@@ -181,7 +181,7 @@ public:
 #else  // #ifdef _MUSTEX_HAS_OPTIONAL
     std::unique_ptr<MustexHandle<T, std::unique_lock<MustexMutexType>>> try_lock_mut()
     {
-        std::unique_lock<decltype(m_mutex)> lock(m_mutex, std::try_to_lock);
+        std::unique_lock<MustexMutexType> lock(m_mutex, std::try_to_lock);
         if (lock.owns_lock())
             return std::unique_ptr<MustexHandle<T, std::unique_lock<MustexMutexType>>>(
                 new MustexHandle<T, std::unique_lock<MustexMutexType>>(std::move(lock), m_data)
@@ -192,7 +192,7 @@ public:
 
     MustexHandle<T, std::unique_lock<MustexMutexType>> lock_mut()
     {
-        return MustexHandle<T, std::unique_lock<MustexMutexType>>(std::unique_lock(m_mutex), m_data);
+        return MustexHandle<T, std::unique_lock<MustexMutexType>>(std::unique_lock<MustexMutexType>(m_mutex), m_data);
     }
 
 private:
