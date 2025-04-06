@@ -18,6 +18,8 @@ public:
         return m_data;
     };
 
+    int get_data() { return m_data; }
+
 private:
     int m_data;
 };
@@ -333,3 +335,19 @@ TEST_CASE("Copy mustex used readonly", "[mustex]")
     REQUIRE(tac - tic < std::chrono::milliseconds(100));
 }
 #endif // #ifdef _MUSTEX_HAS_CONCEPTS
+
+TEST_CASE("Synchronous lock", "[mustex]")
+{
+    Mustex<MyClass> shared1(1);
+    Mustex<float> shared2(2.f);
+    std::mutex m;
+    
+    auto locks = lock_mut(shared1, shared2, m);
+
+    REQUIRE(std::get<0>(locks)->get_data() == 1);
+    REQUIRE(*std::get<1>(locks) == 2);
+    std::get<0>(locks)->do_things_mut();
+    *std::get<1>(locks) += 8.f;
+    REQUIRE(std::get<0>(locks)->get_data() == 3);
+    REQUIRE(*std::get<1>(locks) == 10.f);
+}
