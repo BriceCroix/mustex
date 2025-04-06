@@ -13,129 +13,129 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
       - name: Configure
-        run: cmake --preset lin-test-gcc-cpp11 .
+        run: cmake --preset lin-test-gcc-cpp11
       - name: Build
-        run: cmake --build --preset lin-test-gcc-cpp11 .
+        run: cmake --build --preset lin-test-gcc-cpp11
       - name: Run CTest
-        run: ctest --preset lin-test-gcc-cpp11 .
+        run: ctest --preset lin-test-gcc-cpp11
   lin-test-gcc-cpp17:
     runs-on: ubuntu-24.04
     steps:
       - name: Checkout
         uses: actions/checkout@v4
       - name: Configure
-        run: cmake --preset lin-test-gcc-cpp17 .
+        run: cmake --preset lin-test-gcc-cpp17
       - name: Build
-        run: cmake --build --preset lin-test-gcc-cpp17 .
+        run: cmake --build --preset lin-test-gcc-cpp17
       - name: Run CTest
-        run: ctest --preset lin-test-gcc-cpp17 .
+        run: ctest --preset lin-test-gcc-cpp17
   lin-test-gcc-cpp20:
     runs-on: ubuntu-24.04
     steps:
       - name: Checkout
         uses: actions/checkout@v4
       - name: Configure
-        run: cmake --preset lin-test-gcc-cpp20 .
+        run: cmake --preset lin-test-gcc-cpp20
       - name: Build
-        run: cmake --build --preset lin-test-gcc-cpp20 .
+        run: cmake --build --preset lin-test-gcc-cpp20
       - name: Run CTest
-        run: ctest --preset lin-test-gcc-cpp20 .
+        run: ctest --preset lin-test-gcc-cpp20
   lin-test-clang-cpp11:
       runs-on: ubuntu-24.04
       steps:
         - name: Checkout
           uses: actions/checkout@v4
         - name: Configure
-          run: cmake --preset lin-test-clang-cpp11 .
+          run: cmake --preset lin-test-clang-cpp11
         - name: Build
-          run: cmake --build --preset lin-test-clang-cpp11 .
+          run: cmake --build --preset lin-test-clang-cpp11
         - name: Run CTest
-          run: ctest --preset lin-test-clang-cpp11 .
+          run: ctest --preset lin-test-clang-cpp11
   lin-test-clang-cpp17:
     runs-on: ubuntu-24.04
     steps:
       - name: Checkout
         uses: actions/checkout@v4
       - name: Configure
-        run: cmake --preset lin-test-clang-cpp17 .
+        run: cmake --preset lin-test-clang-cpp17
       - name: Build
-        run: cmake --build --preset lin-test-clang-cpp17 .
+        run: cmake --build --preset lin-test-clang-cpp17
       - name: Run CTest
-        run: ctest --preset lin-test-clang-cpp17 .
+        run: ctest --preset lin-test-clang-cpp17
   lin-test-clang-cpp20:
     runs-on: ubuntu-24.04
     steps:
       - name: Checkout
         uses: actions/checkout@v4
       - name: Configure
-        run: cmake --preset lin-test-clang-cpp20 .
+        run: cmake --preset lin-test-clang-cpp20
       - name: Build
-        run: cmake --build --preset lin-test-clang-cpp20 .
+        run: cmake --build --preset lin-test-clang-cpp20
       - name: Run CTest
-        run: ctest --preset lin-test-clang-cpp20 .
+        run: ctest --preset lin-test-clang-cpp20
   win-test-msvc-cpp11:
       runs-on: windows-2022
       steps:
         - name: Checkout
           uses: actions/checkout@v4
         - name: Configure
-          run: cmake --preset win-test-msvc-cpp11 .
+          run: cmake --preset win-test-msvc-cpp11
         - name: Build
-          run: cmake --build --preset win-test-msvc-cpp11 .
+          run: cmake --build --preset win-test-msvc-cpp11
         - name: Run CTest
-          run: ctest --preset win-test-msvc-cpp11 .
+          run: ctest --preset win-test-msvc-cpp11
   win-test-msvc-cpp17:
     runs-on: windows-2022
     steps:
       - name: Checkout
         uses: actions/checkout@v4
       - name: Configure
-        run: cmake --preset win-test-msvc-cpp17 .
+        run: cmake --preset win-test-msvc-cpp17
       - name: Build
-        run: cmake --build --preset win-test-msvc-cpp17 .
+        run: cmake --build --preset win-test-msvc-cpp17
       - name: Run CTest
-        run: ctest --preset win-test-msvc-cpp17 .
+        run: ctest --preset win-test-msvc-cpp17
   win-test-msvc-cpp20:
     runs-on: windows-2022
     steps:
       - name: Checkout
         uses: actions/checkout@v4
       - name: Configure
-        run: cmake --preset win-test-msvc-cpp20 .
+        run: cmake --preset win-test-msvc-cpp20
       - name: Build
-        run: cmake --build --preset win-test-msvc-cpp20 .
+        run: cmake --build --preset win-test-msvc-cpp20
       - name: Run CTest
-        run: ctest --preset win-test-msvc-cpp20 .
+        run: ctest --preset win-test-msvc-cpp20
   win-test-clang-cpp11:
       runs-on: windows-2022
       steps:
         - name: Checkout
           uses: actions/checkout@v4
         - name: Configure
-          run: cmake --preset win-test-clang-cpp11 .
+          run: cmake --preset win-test-clang-cpp11
         - name: Build
-          run: cmake --build --preset win-test-clang-cpp11 .
+          run: cmake --build --preset win-test-clang-cpp11
         - name: Run CTest
-          run: ctest --preset win-test-clang-cpp11 .
+          run: ctest --preset win-test-clang-cpp11
   win-test-clang-cpp17:
     runs-on: windows-2022
     steps:
       - name: Checkout
         uses: actions/checkout@v4
       - name: Configure
-        run: cmake --preset win-test-clang-cpp17 .
+        run: cmake --preset win-test-clang-cpp17
       - name: Build
-        run: cmake --build --preset win-test-clang-cpp17 .
+        run: cmake --build --preset win-test-clang-cpp17
       - name: Run CTest
-        run: ctest --preset win-test-clang-cpp17 .
+        run: ctest --preset win-test-clang-cpp17
   win-test-clang-cpp20:
     runs-on: windows-2022
     steps:
       - name: Checkout
         uses: actions/checkout@v4
       - name: Configure
-        run: cmake --preset win-test-clang-cpp20 .
+        run: cmake --preset win-test-clang-cpp20
       - name: Build
-        run: cmake --build --preset win-test-clang-cpp20 .
+        run: cmake --build --preset win-test-clang-cpp20
       - name: Run CTest
-        run: ctest --preset win-test-clang-cpp20 .
+        run: ctest --preset win-test-clang-cpp20
