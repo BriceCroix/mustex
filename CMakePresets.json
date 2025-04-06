@@ -71,34 +71,57 @@
             "inherits": "lin-test-template-clang"
         },
         {
-            "name": "win-test-template",
+            "name": "win-test-template-msvc",
             "generator": "Visual Studio 17 2022",
             "binaryDir": "${sourceDir}/build_win",
             "hidden": true,
             "cacheVariables": {
-                "CMAKE_BUILD_TYPE": "RelWithDebInfo",
                 "MUSTEX_BUILD_TESTS": "ON",
                 "MUSTEX_TESTS_CXX_20": "OFF",
                 "MUSTEX_TESTS_CXX_17": "OFF"
             }
         },
         {
-            "name": "win-test-cpp20",
-            "inherits": "win-test-template",
+            "name": "win-test-msvc-cpp20",
+            "inherits": "win-test-template-msvc",
             "cacheVariables": {
                 "MUSTEX_TESTS_CXX_20": "ON"
             }
         },
         {
-            "name": "win-test-cpp17",
-            "inherits": "win-test-template",
+            "name": "win-test-msvc-cpp17",
+            "inherits": "win-test-template-msvc",
             "cacheVariables": {
                 "MUSTEX_TESTS_CXX_17": "ON"
             }
         },
         {
-            "name": "win-test-cpp11",
-            "inherits": "win-test-template"
+            "name": "win-test-msvc-cpp11",
+            "inherits": "win-test-template-msvc"
+        },
+        {
+            "name": "win-test-template-clang",
+            "inherits": "win-test-template-msvc",
+            "hidden": true,
+            "toolset": "ClangCL"
+        },
+        {
+            "name": "win-test-clang-cpp20",
+            "inherits": "win-test-template-clang",
+            "cacheVariables": {
+                "MUSTEX_TESTS_CXX_20": "ON"
+            }
+        },
+        {
+            "name": "win-test-clang-cpp17",
+            "inherits": "win-test-template-clang",
+            "cacheVariables": {
+                "MUSTEX_TESTS_CXX_17": "ON"
+            }
+        },
+        {
+            "name": "win-test-clang-cpp11",
+            "inherits": "win-test-template-clang"
         }
     ],
     "buildPresets": [
@@ -133,19 +156,39 @@
             "jobs": 12
         },
         {
-            "name": "win-test-cpp20",
-            "configurePreset": "win-test-cpp20",
+            "name": "win-test-template",
+            "hidden": true,
             "configuration": "RelWithDebInfo"
         },
         {
-            "name": "win-test-cpp17",
-            "configurePreset": "win-test-cpp17",
-            "configuration": "RelWithDebInfo"
+            "name": "win-test-msvc-cpp20",
+            "configurePreset": "win-test-msvc-cpp20",
+            "inherits": "win-test-template"
         },
         {
-            "name": "win-test-cpp11",
-            "configurePreset": "win-test-cpp11",
-            "configuration": "RelWithDebInfo"
+            "name": "win-test-msvc-cpp17",
+            "configurePreset": "win-test-msvc-cpp17",
+            "inherits": "win-test-template"
+        },
+        {
+            "name": "win-test-msvc-cpp11",
+            "configurePreset": "win-test-msvc-cpp11",
+            "inherits": "win-test-template"
+        },
+        {
+            "name": "win-test-clang-cpp20",
+            "configurePreset": "win-test-clang-cpp20",
+            "inherits": "win-test-template"
+        },
+        {
+            "name": "win-test-clang-cpp17",
+            "configurePreset": "win-test-clang-cpp17",
+            "inherits": "win-test-template"
+        },
+        {
+            "name": "win-test-clang-cpp11",
+            "configurePreset": "win-test-clang-cpp11",
+            "inherits": "win-test-template"
         }
     ],
     "testPresets": [
@@ -174,19 +217,39 @@
             "configurePreset": "lin-test-clang-cpp11"
         },
         {
-            "name": "win-test-cpp20",
-            "configurePreset": "win-test-cpp20",
+            "name": "win-test-template",
+            "hidden": true,
             "configuration": "RelWithDebInfo"
         },
         {
-            "name": "win-test-cpp17",
-            "configurePreset": "win-test-cpp17",
-            "configuration": "RelWithDebInfo"
+            "name": "win-test-msvc-cpp20",
+            "configurePreset": "win-test-msvc-cpp20",
+            "inherits": "win-test-template"
         },
         {
-            "name": "win-test-cpp11",
-            "configurePreset": "win-test-cpp11",
-            "configuration": "RelWithDebInfo"
+            "name": "win-test-msvc-cpp17",
+            "configurePreset": "win-test-msvc-cpp17",
+            "inherits": "win-test-template"
+        },
+        {
+            "name": "win-test-msvc-cpp11",
+            "configurePreset": "win-test-msvc-cpp11",
+            "inherits": "win-test-template"
+        },
+        {
+            "name": "win-test-clang-cpp20",
+            "configurePreset": "win-test-clang-cpp20",
+            "inherits": "win-test-template"
+        },
+        {
+            "name": "win-test-clang-cpp17",
+            "configurePreset": "win-test-clang-cpp17",
+            "inherits": "win-test-template"
+        },
+        {
+            "name": "win-test-clang-cpp11",
+            "configurePreset": "win-test-clang-cpp11",
+            "inherits": "win-test-template"
         }
     ]
 }
