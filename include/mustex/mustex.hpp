@@ -63,16 +63,16 @@ class Mustex;
 /// @brief Allow to access Mustex data, mutably or not depending on method used to construct.
 /// @tparam T Type of data to be accessed, potentially const-qualified.
 /// @tparam L Type of lock owned by this class, equal to either WL.
-/// @tparam MX Type of owner Mustex.
-template <typename T, class L, class MX>
+template <typename T, class L>
 class MustexHandle
 {
 public:
     // Only parent Mustex can instantiate this class.
-    friend MX;
+    template<class MT, class MM, class MRL, class MWL>
+    friend class Mustex;
 
     /// @brief The type of contained value, exposed for convenience.
-    using data_t = typename MX::data_t;
+    using data_t = typename std::remove_cv<T>::type;
 
     MustexHandle() = delete;
     MustexHandle(const MustexHandle &) = delete;
@@ -124,9 +124,9 @@ public:
     /// @brief The type of contained value, exposed for convenience.
     using data_t = typename std::remove_cv<T>::type;
     /// @brief The type of handle used to access data.
-    using Handle = MustexHandle<const data_t, RL, Mustex>;
+    using Handle = MustexHandle<const data_t, RL>;
     /// @brief The type of handle used to access data mutably.
-    using HandleMut = MustexHandle<data_t, WL, Mustex>;
+    using HandleMut = MustexHandle<data_t, WL>;
 
     template<typename... Args>
 #ifdef _MUSTEX_HAS_CONCEPTS
