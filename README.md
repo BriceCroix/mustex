@@ -150,7 +150,7 @@ If you can provide your own implementation for these two types you can enable th
 
 You may also use third-party implementations such as [Boost's](http://www.boost.org/doc/libs/1_41_0/doc/html/thread/synchronization.html#thread.synchronization.mutex_types.shared_mutex), [POSIX's](https://docs.oracle.com/cd/E19455-01/806-5257/6je9h032u/index.html), [Win32's](http://msdn.microsoft.com/en-us/library/windows/desktop/aa904937%28v=vs.85%29.aspx), [HowardHinnant's](https://howardhinnant.github.io/shared_mutex.cpp), [Emanem's](https://github.com/Emanem/shared_mutex), etc.
 
-Alternatively if you are using C++14, `std::shared_lock` entering the standard in this version, but not `std::shared_mutex`...
+Alternatively if you are using C++14, `std::shared_lock` entered the standard in this version, but not `std::shared_mutex`...
 
 ```cpp
 #include <mustex/mustex.hpp>
@@ -179,18 +179,28 @@ int main(int argc, char* argv[])
 
 ```
 
+## Supported OS and compilers
+
+|       |        Linux       |         Windows         |
+|-------|:------------------:|:-----------------------:|
+| gcc   | :heavy_check_mark: | (i.e. mingw) Not tested |
+| msvc  |         NA         |    :heavy_check_mark:   |
+| clang | :heavy_check_mark: |    :heavy_check_mark:   |
+
 ## Building tests
 
 ### Unix
 
 ```bash
-cmake --preset lin-test-gcc-cpp20 . && cmake --build --preset lin-test-gcc-cpp20
+cmake --preset lin-test-<gcc|clang>-cpp<11|17|20>
+cmake --build --preset lin-test-<gcc|clang>-cpp<11|17|20>
 ./build_lin/mustex_tests
 ```
 
 ### Windows
 
 ```bash
-cmake.exe --preset win-vs16-2019 . && cmake --build build_win --config RelWithDebInfo
+cmake --preset win-test-<msvc|clang>-cpp<11|17|20>
+cmake --build --preset win-test-<msvc|clang>-cpp<11|17|20>
 ./build_win/RelWithDebInfo/mustex_tests.exe
 ```
