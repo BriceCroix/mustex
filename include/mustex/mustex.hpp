@@ -71,6 +71,9 @@ public:
     // Only parent Mustex can instantiate this class.
     friend MX;
 
+    /// @brief The type of contained value, exposed for convenience.
+    using data_t = typename MX::data_t;
+
     MustexHandle() = delete;
     MustexHandle(const MustexHandle &) = delete;
     MustexHandle(MustexHandle &&other)
@@ -118,6 +121,13 @@ template<class T, class M = bcx::DefaultMustexMutex, class RL = DefaultMustedRea
 class Mustex
 {
 public:
+    /// @brief The type of contained value, exposed for convenience.
+    using data_t = typename std::remove_cv<T>::type;
+    /// @brief The type of handle used to access data.
+    using Handle = MustexHandle<const data_t, RL, Mustex>;
+    /// @brief The type of handle used to access data mutably.
+    using HandleMut = MustexHandle<data_t, WL, Mustex>;
+
     template<typename... Args>
 #ifdef _MUSTEX_HAS_CONCEPTS
         // Prevent from using this constructor when argument is a mustex (ref or moved)
@@ -172,27 +182,27 @@ public:
     virtual ~Mustex() = default;
 
 #ifdef _MUSTEX_HAS_OPTIONAL
-    std::optional<MustexHandle<const T, RL, Mustex>> try_lock() const
+    std::optional<Handle> try_lock() const
     {
         RL lock(m_mutex, std::try_to_lock);
         if (lock.owns_lock())
-            return MustexHandle<const T, RL, Mustex>(std::move(lock), m_data);
+            return Handle(std::move(lock), m_data);
         return {};
     }
 #else // #ifdef _MUSTEX_HAS_OPTIONAL
-    std::unique_ptr<MustexHandle<const T, RL, Mustex>> try_lock() const
+    std::unique_ptr<Handle> try_lock() const
     {
         RL lock(m_mutex, std::try_to_lock);
         if (lock.owns_lock())
-            return std::unique_ptr<MustexHandle<const T, RL, Mustex>>(
-                new MustexHandle<const T, RL, Mustex>(std::move(lock), m_data));
+            return std::unique_ptr<Handle>(
+                new Handle(std::move(lock), m_data));
         return {};
     }
 #endif // #ifdef _MUSTEX_HAS_OPTIONAL
 
-    MustexHandle<const T, RL, Mustex> lock() const
+    Handle lock() const
     {
-        return MustexHandle<const T, RL, Mustex>(RL(m_mutex), m_data);
+        return Handle(RL(m_mutex), m_data);
     }
 
     auto lock(std::try_to_lock_t) const -> decltype(std::declval<Mustex>().try_lock())
@@ -201,27 +211,27 @@ public:
     }
 
 #ifdef _MUSTEX_HAS_OPTIONAL
-    std::optional<MustexHandle<T, WL, Mustex>> try_lock_mut()
+    std::optional<HandleMut> try_lock_mut()
     {
         WL lock(m_mutex, std::try_to_lock);
         if (lock.owns_lock())
-            return MustexHandle<T, WL, Mustex>(std::move(lock), m_data);
+            return HandleMut(std::move(lock), m_data);
         return {};
     }
 #else  // #ifdef _MUSTEX_HAS_OPTIONAL
-    std::unique_ptr<MustexHandle<T, WL, Mustex>> try_lock_mut()
+    std::unique_ptr<HandleMut> try_lock_mut()
     {
         WL lock(m_mutex, std::try_to_lock);
         if (lock.owns_lock())
-            return std::unique_ptr<MustexHandle<T, WL, Mustex>>(
-                new MustexHandle<T, WL, Mustex>(std::move(lock), m_data));
+            return std::unique_ptr<HandleMut>(
+                new HandleMut(std::move(lock), m_data));
         return {};
     }
 #endif // #ifdef _MUSTEX_HAS_OPTIONAL
 
-    MustexHandle<T, WL, Mustex> lock_mut()
+    HandleMut lock_mut()
     {
-        return MustexHandle<T, WL, Mustex>(WL(m_mutex), m_data);
+        return HandleMut(WL(m_mutex), m_data);
     }
 
     auto lock_mut(std::try_to_lock_t) -> decltype(std::declval<Mustex>().try_lock_mut())
