@@ -21,12 +21,14 @@
         {
             "name": "lin-test-template-gcc",
             "hidden": true,
-            "inherits":"lin-test-template",
-            "environment": {"CXX":"g++"}
+            "inherits": "lin-test-template",
+            "environment": {
+                "CXX": "g++"
+            }
         },
         {
             "name": "lin-test-gcc-cpp20",
-            "inherits":"lin-test-template-gcc",
+            "inherits": "lin-test-template-gcc",
             "cacheVariables": {
                 "MUSTEX_TESTS_CXX_20": "ON"
             }
@@ -69,26 +71,34 @@
             "inherits": "lin-test-template-clang"
         },
         {
-            "name": "win-vs17-2022-cpp20",
+            "name": "win-test-template",
             "generator": "Visual Studio 17 2022",
-            "architecture": "x64",
             "binaryDir": "${sourceDir}/build_win",
+            "hidden": true,
             "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "RelWithDebInfo",
                 "MUSTEX_BUILD_TESTS": "ON",
-                "MUSTEX_TESTS_CXX_20": "ON",
+                "MUSTEX_TESTS_CXX_20": "OFF",
                 "MUSTEX_TESTS_CXX_17": "OFF"
             }
         },
         {
-            "name": "win-vs16-2019-cpp17",
-            "generator": "Visual Studio 16 2019",
-            "architecture": "x64",
-            "binaryDir": "${sourceDir}/build_win",
+            "name": "win-test-cpp20",
+            "inherits": "win-test-template",
             "cacheVariables": {
-                "MUSTEX_BUILD_TESTS": "ON",
-                "MUSTEX_TESTS_CXX_20": "ON",
-                "MUSTEX_TESTS_CXX_17": "OFF"
+                "MUSTEX_TESTS_CXX_20": "ON"
             }
+        },
+        {
+            "name": "win-test-cpp17",
+            "inherits": "win-test-template",
+            "cacheVariables": {
+                "MUSTEX_TESTS_CXX_17": "ON"
+            }
+        },
+        {
+            "name": "win-test-cpp11",
+            "inherits": "win-test-template"
         }
     ],
     "buildPresets": [
@@ -123,20 +133,26 @@
             "jobs": 12
         },
         {
-            "name": "win-vs17-2022-cpp20",
-            "configurePreset": "win-vs17-2022-cpp20",
+            "name": "win-test-cpp20",
+            "configurePreset": "win-test-cpp20",
             "configuration": "RelWithDebInfo"
         },
         {
-            "name": "win-vs16-2019-cpp17",
-            "configurePreset": "win-vs16-2019-cpp17",
+            "name": "win-test-cpp17",
+            "configurePreset": "win-test-cpp17",
+            "configuration": "RelWithDebInfo"
+        },
+        {
+            "name": "win-test-cpp11",
+            "configurePreset": "win-test-cpp11",
             "configuration": "RelWithDebInfo"
         }
     ],
     "testPresets": [
         {
             "name": "lin-test-gcc-cpp20",
-            "configurePreset": "lin-test-gcc-cpp20"        },
+            "configurePreset": "lin-test-gcc-cpp20"
+        },
         {
             "name": "lin-test-gcc-cpp17",
             "configurePreset": "lin-test-gcc-cpp17"
@@ -158,13 +174,18 @@
             "configurePreset": "lin-test-clang-cpp11"
         },
         {
-            "name": "win-vs17-2022-cpp20",
-            "configurePreset": "win-vs17-2022-cpp20",
+            "name": "win-test-cpp20",
+            "configurePreset": "win-test-cpp20",
             "configuration": "RelWithDebInfo"
         },
         {
-            "name": "win-vs16-2019-cpp17",
-            "configurePreset": "win-vs16-2019-cpp17",
+            "name": "win-test-cpp17",
+            "configurePreset": "win-test-cpp17",
+            "configuration": "RelWithDebInfo"
+        },
+        {
+            "name": "win-test-cpp11",
+            "configurePreset": "win-test-cpp11",
             "configuration": "RelWithDebInfo"
         }
     ]

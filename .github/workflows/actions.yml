@@ -73,3 +73,36 @@ jobs:
         run: cmake --build --preset lin-test-clang-cpp20 .
       - name: Run CTest
         run: ctest --preset lin-test-clang-cpp20 .
+  test-msvc-cpp11:
+      runs-on: windows-2022
+      steps:
+        - name: Checkout
+          uses: actions/checkout@v4
+        - name: Configure
+          run: cmake --preset win-test-cpp11 .
+        - name: Build
+          run: cmake --build --preset win-test-cpp11 .
+        - name: Run CTest
+          run: ctest --preset win-test-cpp11 .
+  test-msvc-cpp17:
+    runs-on: windows-2022
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Configure
+        run: cmake --preset win-test-cpp17 .
+      - name: Build
+        run: cmake --build --preset win-test-cpp17 .
+      - name: Run CTest
+        run: ctest --preset win-test-cpp17 .
+  test-msvc-cpp20:
+    runs-on: windows-2022
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Configure
+        run: cmake --preset win-test-cpp20 .
+      - name: Build
+        run: cmake --build --preset win-test-cpp20 .
+      - name: Run CTest
+        run: ctest --preset win-test-cpp20 .
