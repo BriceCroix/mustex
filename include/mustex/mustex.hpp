@@ -245,6 +245,16 @@ public:
 private:
     T m_data;
     mutable M m_mutex;
+
+    Handle lock(std::adopt_lock_t adopt) const
+    {
+        return Handle(RL(m_mutex, adopt), m_data);
+    }
+
+    HandleMut lock_mut(std::adopt_lock_t adopt)
+    {
+        return Handle(WL(m_mutex, adopt), m_data);
+    }
 };
 } // namespace bcx
 
