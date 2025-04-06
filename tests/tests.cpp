@@ -216,7 +216,7 @@ TEST_CASE("Try lock mutably", "[mustex]")
     **opt_handle = 45;
     REQUIRE(**opt_handle == 45);
 
-    auto opt_handle2 = m.try_lock_mut();
+    auto opt_handle2 = m.lock_mut(std::try_to_lock);
     REQUIRE_FALSE(opt_handle2);
 }
 
@@ -228,7 +228,7 @@ TEST_CASE("Try lock", "[mustex]")
     REQUIRE(opt_handle);
     REQUIRE(**opt_handle == 42);
     
-    auto opt_handle2 = m.try_lock();
+    auto opt_handle2 = m.lock(std::try_to_lock);
 #ifdef _MUSTEX_HAS_SHARED_MUTEX
     REQUIRE(opt_handle2);
     REQUIRE(**opt_handle2 == 42);

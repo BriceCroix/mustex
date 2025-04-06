@@ -171,11 +171,6 @@ public:
 
     virtual ~Mustex() = default;
 
-    MustexHandle<const T, RL, Mustex> lock() const
-    {
-        return MustexHandle<const T, RL, Mustex>(RL(m_mutex), m_data);
-    }
-
 #ifdef _MUSTEX_HAS_OPTIONAL
     std::optional<MustexHandle<const T, RL, Mustex>> try_lock() const
     {
@@ -195,9 +190,14 @@ public:
     }
 #endif // #ifdef _MUSTEX_HAS_OPTIONAL
 
-    MustexHandle<T, WL, Mustex> lock_mut()
+    MustexHandle<const T, RL, Mustex> lock() const
     {
-        return MustexHandle<T, WL, Mustex>(WL(m_mutex), m_data);
+        return MustexHandle<const T, RL, Mustex>(RL(m_mutex), m_data);
+    }
+
+    auto lock(std::try_to_lock_t) const -> decltype(std::declval<Mustex>().try_lock())
+    {
+        return try_lock();
     }
 
 #ifdef _MUSTEX_HAS_OPTIONAL
@@ -218,6 +218,16 @@ public:
         return {};
     }
 #endif // #ifdef _MUSTEX_HAS_OPTIONAL
+
+    MustexHandle<T, WL, Mustex> lock_mut()
+    {
+        return MustexHandle<T, WL, Mustex>(WL(m_mutex), m_data);
+    }
+
+    auto lock_mut(std::try_to_lock_t) -> decltype(std::declval<Mustex>().try_lock_mut())
+    {
+        return try_lock_mut();
+    }
 
 private:
     T m_data;
