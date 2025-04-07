@@ -341,13 +341,22 @@ TEST_CASE("Synchronous lock", "[mustex]")
     Mustex<MyClass> shared1(1);
     Mustex<float> shared2(2.f);
     std::mutex m;
-    
+
     auto locks = lock_mut(shared1, shared2, m);
 
-    REQUIRE(std::get<0>(locks)->get_data() == 1);
-    REQUIRE(*std::get<1>(locks) == 2);
-    std::get<0>(locks)->do_things_mut();
-    *std::get<1>(locks) += 8.f;
-    REQUIRE(std::get<0>(locks)->get_data() == 3);
-    REQUIRE(*std::get<1>(locks) == 10.f);
+#if defined(__cplusplus) && __cplusplus >= 201703L
+    auto &[handle1, handle2, lock] = locks;
+#else // #if defined(__cplusplus) && __cplusplus >= 201703L
+    auto &handle1 = std::get<0>(locks);
+    auto &handle2 = std::get<1>(locks);
+    auto &lock = std::get<2>(locks);
+#endif // #if defined(__cplusplus) && __cplusplus >= 201703L
+
+    REQUIRE(handle1->get_data() == 1);
+    REQUIRE(*handle2 == 2.f);
+    handle1->do_things_mut();
+    *handle2 += 8.f;
+    REQUIRE(handle1->get_data() == 3);
+    REQUIRE(*handle2 == 10.f);
+    REQUIRE(lock.owns_lock());
 }
