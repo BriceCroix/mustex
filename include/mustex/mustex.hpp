@@ -328,6 +328,22 @@ void lock_all(Tuple &mutexes)
     lock_all_impl(mutexes, std::make_index_sequence<N>{});
 }
 
+template<typename Tuple, std::size_t... I>
+bool try_lock_all_impl(Tuple &mutexes, std::index_sequence<I...>)
+{
+    // Yes -1 is the success code. https://en.cppreference.com/w/cpp/thread/try_lock
+    return std::try_lock(std::get<I>(mutexes)...) == -1;
+}
+
+/// @brief Try to lock all given mutexes.
+/// @return True for success.
+template<typename Tuple>
+bool try_lock_all(Tuple &mutexes)
+{
+    constexpr std::size_t N = std::tuple_size<Tuple>::value;
+    return try_lock_all_impl(mutexes, std::make_index_sequence<N>{});
+}
+
 } // namespace detail
 
 /// @brief Lock mutably any given @ref Mustex or raw mutex using deadlock avoidance.
@@ -341,6 +357,30 @@ auto lock_mut(Args &...args)
     auto mutex_refs = std::tie(detail::get_mutex_ref(args)...);
     detail::lock_all(mutex_refs);
     return std::make_tuple(detail::adopt_lock(args)...);
+}
+
+/// @brief Tries to lock mutably any given @ref Mustex or raw mutex using deadlock avoidance.
+/// @tparam ...Args Types of given arguments.
+/// @param ...args Arbitrary number of Mustex and/or raw mutex.
+/// @return Optional tuple. Contains nothing if at least one argument could not be locked.
+///         Otherwise contains a Mustex::HandleMut for each given Mustex, and a lock for each raw mutex.
+template<typename... Args>
+auto try_lock_mut(Args &...args)
+#ifdef _MUSTEX_HAS_OPTIONAL
+    -> std::optional<std::tuple<decltype(detail::adopt_lock(args))...>>
+#else
+    -> std::unique_ptr<std::tuple<decltype(detail::adopt_lock(args))...>>
+#endif
+{
+    auto mutex_refs = std::tie(detail::get_mutex_ref(args)...);
+    if (!detail::try_lock_all(mutex_refs))
+        return {};
+    auto tuple = std::make_tuple(detail::adopt_lock(args)...);
+#ifdef _MUSTEX_HAS_OPTIONAL
+    return std::move(tuple);
+#else
+    return std::make_unique<std::tuple<decltype(detail::adopt_lock(args))...>>(std::move(tuple));
+#endif
 }
 
 } // namespace bcx
