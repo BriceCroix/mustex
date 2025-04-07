@@ -90,7 +90,7 @@ TEST_CASE("Lock mustex readonly twice", "[mustex]")
     auto tac = std::chrono::high_resolution_clock::now();
 #ifdef _MUSTEX_HAS_SHARED_MUTEX
     REQUIRE(tac - tic < std::chrono::milliseconds(150));
-#else  // #ifdef _MUSTEX_HAS_SHARED_MUTEX
+#else // #ifdef _MUSTEX_HAS_SHARED_MUTEX
     REQUIRE(tac - tic >= std::chrono::milliseconds(200));
 #endif // #ifdef _MUSTEX_HAS_SHARED_MUTEX
 }
@@ -110,7 +110,8 @@ TEST_CASE("Lock mustex mutably while locked readonly", "[mustex]")
             started = true;
             REQUIRE(*handle == 42);
             std::this_thread::sleep_for(std::chrono::milliseconds(100));
-        });
+        }
+    );
     // Make sure the future starts.
     while (!started)
         ;
@@ -147,7 +148,8 @@ TEST_CASE("Lock mustex readonly while locked mutably", "[mustex]")
             REQUIRE(*handle == 42);
             *handle = 15;
             std::this_thread::sleep_for(std::chrono::milliseconds(100));
-        });
+        }
+    );
     // Make sure the future starts.
     while (!started)
         ;
@@ -184,7 +186,8 @@ TEST_CASE("Lock mustex mutably while locked mutably", "[mustex]")
             REQUIRE(*handle == 42);
             *handle = 15;
             std::this_thread::sleep_for(std::chrono::milliseconds(100));
-        });
+        }
+    );
     // Make sure the future starts.
     while (!started)
         ;
@@ -223,11 +226,11 @@ TEST_CASE("Try lock mutably", "[mustex]")
 TEST_CASE("Try lock", "[mustex]")
 {
     Mustex<int> m(42);
-    
+
     auto opt_handle = m.try_lock();
     REQUIRE(opt_handle);
     REQUIRE(**opt_handle == 42);
-    
+
     auto opt_handle2 = m.lock(std::try_to_lock);
 #ifdef _MUSTEX_HAS_SHARED_MUTEX
     REQUIRE(opt_handle2);
@@ -286,7 +289,8 @@ TEST_CASE("Copy mustex used mutably", "[mustex]")
             auto handle = m.lock_mut();
             started = true;
             std::this_thread::sleep_for(std::chrono::milliseconds(100));
-        });
+        }
+    );
     // Make sure the future starts.
     while (!started)
         ;
@@ -315,7 +319,8 @@ TEST_CASE("Copy mustex used readonly", "[mustex]")
             auto handle = m.lock();
             started = true;
             std::this_thread::sleep_for(std::chrono::milliseconds(100));
-        });
+        }
+    );
     // Make sure the future starts.
     while (!started)
         ;

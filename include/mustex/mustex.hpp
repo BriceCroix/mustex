@@ -45,12 +45,12 @@ namespace bcx
 {
 
 #ifdef _MUSTEX_HAS_SHARED_MUTEX
-template <class M>
-using DefaultMustedReadLock = std::shared_lock<M>;
+template<class M>
+using DefaultMustexReadLock = std::shared_lock<M>;
 using DefaultMustexMutex = std::shared_mutex;
 #else // #ifdef _MUSTEX_HAS_SHARED_MUTEX
-template <class M>
-using DefaultMustedReadLock = std::unique_lock<M>;
+template<class M>
+using DefaultMustexReadLock = std::unique_lock<M>;
 using DefaultMustexMutex = std::mutex;
 #endif // #ifdef _MUSTEX_HAS_SHARED_MUTEX
 
@@ -63,7 +63,7 @@ class Mustex;
 /// @brief Allow to access Mustex data, mutably or not depending on method used to construct.
 /// @tparam T Type of data to be accessed, potentially const-qualified.
 /// @tparam L Type of lock owned by this class, equal to either WL.
-template <typename T, class L>
+template<typename T, class L>
 class MustexHandle
 {
 public:
@@ -77,7 +77,8 @@ public:
     MustexHandle() = delete;
     MustexHandle(const MustexHandle &) = delete;
     MustexHandle(MustexHandle &&other)
-        : m_lock{std::move(other.m_lock)}, m_data{other.m_data}
+        : m_lock{std::move(other.m_lock)}
+        , m_data{other.m_data}
     {
     }
 
@@ -117,7 +118,7 @@ private:
 /// @tparam M Type of synchronization mutex.
 /// @tparam RL Type of lock used for read-accesses.
 /// @tparam WL Type of lock used for write-accesses.
-template<class T, class M = bcx::DefaultMustexMutex, class RL = DefaultMustedReadLock<M>, class WL = DefaultMustexWriteLock<M>>
+template<class T, class M = DefaultMustexMutex, class RL = DefaultMustexReadLock<M>, class WL = DefaultMustexWriteLock<M>>
 class Mustex
 {
 public:
@@ -130,7 +131,7 @@ public:
 
     template<typename... Args>
 #ifdef _MUSTEX_HAS_CONCEPTS
-        // Prevent from using this constructor when argument is a mustex (ref or moved)
+    // Prevent from using this constructor when argument is a mustex (ref or moved)
         requires(!std::is_same_v<Mustex, std::remove_cvref_t<Args>> && ...)
 #endif // #ifdef __cpp_concepts
     Mustex(Args &&...args)
@@ -195,7 +196,8 @@ public:
         RL lock(m_mutex, std::try_to_lock);
         if (lock.owns_lock())
             return std::unique_ptr<Handle>(
-                new Handle(std::move(lock), m_data));
+                new Handle(std::move(lock), m_data)
+            );
         return {};
     }
 #endif // #ifdef _MUSTEX_HAS_OPTIONAL
@@ -218,13 +220,14 @@ public:
             return HandleMut(std::move(lock), m_data);
         return {};
     }
-#else  // #ifdef _MUSTEX_HAS_OPTIONAL
+#else // #ifdef _MUSTEX_HAS_OPTIONAL
     std::unique_ptr<HandleMut> try_lock_mut()
     {
         WL lock(m_mutex, std::try_to_lock);
         if (lock.owns_lock())
             return std::unique_ptr<HandleMut>(
-                new HandleMut(std::move(lock), m_data));
+                new HandleMut(std::move(lock), m_data)
+            );
         return {};
     }
 #endif // #ifdef _MUSTEX_HAS_OPTIONAL
