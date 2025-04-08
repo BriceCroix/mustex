@@ -10,7 +10,7 @@
 #    if defined(__cpp_lib_optional)
 #        define _MUSTEX_HAS_OPTIONAL
 #    endif
-#    if defined(__cpp_lib_shared_mutex)
+#    if defined(__cpp_lib_shared_timed_mutex)
 #        define _MUSTEX_HAS_SHARED_MUTEX
 #    endif
 #else // #if defined(__has_include) && __has_include(<version>)
@@ -20,7 +20,7 @@
 #    if defined(__cplusplus) && __cplusplus >= 201703L
 #        define _MUSTEX_HAS_OPTIONAL
 #    endif
-#    if defined(__cplusplus) && __cplusplus >= 201703L
+#    if defined(__cplusplus) && __cplusplus >= 201402L
 #        define _MUSTEX_HAS_SHARED_MUTEX
 #    endif
 #endif // #if defined(__has_include) && __has_include(<version>)
@@ -49,7 +49,7 @@ namespace detail
 #ifdef _MUSTEX_HAS_SHARED_MUTEX
 template<class M>
 using DefaultMustexReadLock = std::shared_lock<M>;
-using DefaultMustexMutex = std::shared_mutex;
+using DefaultMustexMutex = std::shared_timed_mutex;
 #else // #ifdef _MUSTEX_HAS_SHARED_MUTEX
 template<class M>
 using DefaultMustexReadLock = std::unique_lock<M>;

@@ -15,7 +15,8 @@
                 "CMAKE_BUILD_TYPE": "Debug",
                 "MUSTEX_BUILD_TESTS": "ON",
                 "MUSTEX_TESTS_CXX_20": "OFF",
-                "MUSTEX_TESTS_CXX_17": "OFF"
+                "MUSTEX_TESTS_CXX_17": "OFF",
+                "MUSTEX_TESTS_CXX_14": "OFF"
             }
         },
         {
@@ -38,6 +39,13 @@
             "inherits": "lin-test-template-gcc",
             "cacheVariables": {
                 "MUSTEX_TESTS_CXX_17": "ON"
+            }
+        },
+        {
+            "name": "lin-test-gcc-cpp14",
+            "inherits": "lin-test-template-gcc",
+            "cacheVariables": {
+                "MUSTEX_TESTS_CXX_14": "ON"
             }
         },
         {
@@ -67,6 +75,13 @@
             }
         },
         {
+            "name": "lin-test-clang-cpp14",
+            "inherits": "lin-test-template-clang",
+            "cacheVariables": {
+                "MUSTEX_TESTS_CXX_14": "ON"
+            }
+        },
+        {
             "name": "lin-test-clang-cpp11",
             "inherits": "lin-test-template-clang"
         },
@@ -78,7 +93,8 @@
             "cacheVariables": {
                 "MUSTEX_BUILD_TESTS": "ON",
                 "MUSTEX_TESTS_CXX_20": "OFF",
-                "MUSTEX_TESTS_CXX_17": "OFF"
+                "MUSTEX_TESTS_CXX_17": "OFF",
+                "MUSTEX_TESTS_CXX_14": "OFF"
             }
         },
         {
@@ -93,6 +109,13 @@
             "inherits": "win-test-template-msvc",
             "cacheVariables": {
                 "MUSTEX_TESTS_CXX_17": "ON"
+            }
+        },
+        {
+            "name": "win-test-msvc-cpp14",
+            "inherits": "win-test-template-msvc",
+            "cacheVariables": {
+                "MUSTEX_TESTS_CXX_14": "ON"
             }
         },
         {
@@ -120,6 +143,13 @@
             }
         },
         {
+            "name": "win-test-clang-cpp14",
+            "inherits": "win-test-template-clang",
+            "cacheVariables": {
+                "MUSTEX_TESTS_CXX_14": "ON"
+            }
+        },
+        {
             "name": "win-test-clang-cpp11",
             "inherits": "win-test-template-clang"
         }
@@ -136,6 +166,11 @@
             "jobs": 12
         },
         {
+            "name": "lin-test-gcc-cpp14",
+            "configurePreset": "lin-test-gcc-cpp14",
+            "jobs": 12
+        },
+        {
             "name": "lin-test-gcc-cpp11",
             "configurePreset": "lin-test-gcc-cpp11",
             "jobs": 12
@@ -148,6 +183,11 @@
         {
             "name": "lin-test-clang-cpp17",
             "configurePreset": "lin-test-clang-cpp17",
+            "jobs": 12
+        },
+        {
+            "name": "lin-test-clang-cpp14",
+            "configurePreset": "lin-test-clang-cpp14",
             "jobs": 12
         },
         {
@@ -171,6 +211,11 @@
             "inherits": "win-test-template"
         },
         {
+            "name": "win-test-msvc-cpp14",
+            "configurePreset": "win-test-msvc-cpp14",
+            "inherits": "win-test-template"
+        },
+        {
             "name": "win-test-msvc-cpp11",
             "configurePreset": "win-test-msvc-cpp11",
             "inherits": "win-test-template"
@@ -183,6 +228,11 @@
         {
             "name": "win-test-clang-cpp17",
             "configurePreset": "win-test-clang-cpp17",
+            "inherits": "win-test-template"
+        },
+        {
+            "name": "win-test-clang-cpp14",
+            "configurePreset": "win-test-clang-cpp14",
             "inherits": "win-test-template"
         },
         {
@@ -201,6 +251,10 @@
             "configurePreset": "lin-test-gcc-cpp17"
         },
         {
+            "name": "lin-test-gcc-cpp14",
+            "configurePreset": "lin-test-gcc-cpp14"
+        },
+        {
             "name": "lin-test-gcc-cpp11",
             "configurePreset": "lin-test-gcc-cpp11"
         },
@@ -211,6 +265,10 @@
         {
             "name": "lin-test-clang-cpp17",
             "configurePreset": "lin-test-clang-cpp17"
+        },
+        {
+            "name": "lin-test-clang-cpp14",
+            "configurePreset": "lin-test-clang-cpp14"
         },
         {
             "name": "lin-test-clang-cpp11",
@@ -232,6 +290,11 @@
             "inherits": "win-test-template"
         },
         {
+            "name": "win-test-msvc-cpp14",
+            "configurePreset": "win-test-msvc-cpp14",
+            "inherits": "win-test-template"
+        },
+        {
             "name": "win-test-msvc-cpp11",
             "configurePreset": "win-test-msvc-cpp11",
             "inherits": "win-test-template"
@@ -244,6 +307,11 @@
         {
             "name": "win-test-clang-cpp17",
             "configurePreset": "win-test-clang-cpp17",
+            "inherits": "win-test-template"
+        },
+        {
+            "name": "win-test-clang-cpp14",
+            "configurePreset": "win-test-clang-cpp14",
             "inherits": "win-test-template"
         },
         {
