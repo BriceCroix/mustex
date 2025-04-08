@@ -3,15 +3,15 @@
 ![master status](https://github.com/BriceCroix/mustex/actions/workflows/actions.yml/badge.svg?branch=master)
 
 Mustex is a header-only library allowing to make sure a variable protected by a mutex can only be
-accessed while the mutex is locked, while leveraging [RAII](https://en.cppreference.com/w/cpp/language/raii)
-to abstract synchronization away.
+accessed while the mutex is locked, while leveraging
+[RAII](https://en.cppreference.com/w/cpp/language/raii) to abstract synchronization away.
 
 This library is highly inspired by [Rust Mutex](https://doc.rust-lang.org/std/sync/struct.Mutex.html)
 and tries to mimic its functionalities.
 
 ## Features
 
-- One writer at a time.
+- One writer at a time with `lock_mut()`, `try_lock_mut()`
 
 ```cpp
 bcx::Mustex<float> mustex(42.0f);
@@ -22,15 +22,22 @@ bcx::Mustex<float> mustex(42.0f);
 }
 ```
 
-- Multiple simultaneous readers.
+- Multiple simultaneous readers with `lock()`, `try_lock()`.
 
 ```cpp
 bcx::Mustex<int> mustex(42);
 {
-    auto handle = mustex.lock();
-    auto handle2 = mutex.lock();
-    // No deadlock here !
-    std::cout << *handle << "==" << handle2 << std::endl;
+    auto thread1 = std::async(
+        std::launch::async,
+        [&mustex]{auto handle = mustex.lock(); /* do things with *handle */}
+    );
+    auto thread2 = std::async(
+        std::launch::async,
+        [&mustex]{auto handle = mustex.lock(); /* do things with *handle */}
+    );
+    // These two asynchronous blocks can execute in parallel without blocking the other.
+    thread1.wait();
+    thread2.wait();
 }
 ```
 
@@ -51,13 +58,23 @@ std::mutex m;
 }
 ```
 
+## Common pitfalls
+
+- Locking twice the same `Mustex` on the same thread in the same scope.
+  - In mutable mode (`lock_mut()`) : will cause a deadlock.
+  - In read-only mode (`lock()`) : is undefined behavior.
+
 ## More realistic example
 
-The following example demonstrates how it is possible to have 2 consumers for 1 producer sharing accesses to a single value. In a real-case scenario the consumers could be a logger-thread and a thread to notify clients on the network for instance.
+The following example demonstrates how it is possible to have 2 consumers for 1 producer sharing
+accesses to a single value. In a real-case scenario the consumers could be a logger-thread and a
+thread to notify clients on the network for instance.
 
-The two consumers will be able to read the value at the same time providing the producer is not currently writing to it.
+The two consumers will be able to read the value at the same time providing the producer is not
+currently writing to it.
 
-Notice the use of `shared_ptr` to share the ownership of the `Mustex`, mimicking the common `Arc<Mutex<T>>` pattern in rust.
+Notice the use of `shared_ptr` to share the ownership of the `Mustex`, mimicking the common
+`Arc<Mutex<T>>` pattern in rust.
 
 ```cpp
 #include <atomic>
@@ -98,7 +115,8 @@ int main(int argc, char *argv[])
                     *handle = next;
                 }
             }
-        });
+        }
+    );
 
     auto consumer1 = std::async(
         std::launch::async,
@@ -116,7 +134,8 @@ int main(int argc, char *argv[])
                 // Log each second.
                 std::this_thread::sleep_for(std::chrono::seconds(1));
             }
-        });
+        }
+    );
 
     auto consumer2 = std::async(
         std::launch::async,
@@ -135,7 +154,8 @@ int main(int argc, char *argv[])
                 // Write to file at regular intervals.
                 std::this_thread::sleep_for(std::chrono::milliseconds(17));
             }
-        });
+        }
+    );
 
     // Run for one minute.
     std::this_thread::sleep_for(std::chrono::seconds(60));
@@ -156,13 +176,21 @@ TODO
 
 ### Enable simultaneous multiple readers for C++11
 
-The *simultaneous multiple readers* feature of this library is made possible thanks to `std::shared_mutex` and `std::shared_lock` from C++17.
+The *simultaneous multiple readers* feature of this library is made possible thanks to
+`std::shared_mutex` and `std::shared_lock` from C++17.
 
-If you can provide your own implementation for these two types you can enable this feature by using the full signature of the `Mustex` class.
+If you can provide your own implementation for these two types you can enable this feature by using
+the full signature of the `Mustex` class.
 
-You may also use third-party implementations such as [Boost's](http://www.boost.org/doc/libs/1_41_0/doc/html/thread/synchronization.html#thread.synchronization.mutex_types.shared_mutex), [POSIX's](https://docs.oracle.com/cd/E19455-01/806-5257/6je9h032u/index.html), [Win32's](http://msdn.microsoft.com/en-us/library/windows/desktop/aa904937%28v=vs.85%29.aspx), [HowardHinnant's](https://howardhinnant.github.io/shared_mutex.cpp), [Emanem's](https://github.com/Emanem/shared_mutex), etc.
+You may also use third-party implementations such as
+[Boost's](http://www.boost.org/doc/libs/1_41_0/doc/html/thread/synchronization.html#thread.synchronization.mutex_types.shared_mutex),
+[POSIX's](https://docs.oracle.com/cd/E19455-01/806-5257/6je9h032u/index.html),
+[Win32's](http://msdn.microsoft.com/en-us/library/windows/desktop/aa904937%28v=vs.85%29.aspx),
+[HowardHinnant's](https://howardhinnant.github.io/shared_mutex.cpp),
+[Emanem's](https://github.com/Emanem/shared_mutex), etc.
 
-Alternatively if you are using C++14, `std::shared_lock` entered the standard in this version, but not `std::shared_mutex`...
+Alternatively if you are using C++14, `std::shared_lock` entered the standard in this version, but
+not `std::shared_mutex`...
 
 ```cpp
 #include <mustex/mustex.hpp>
