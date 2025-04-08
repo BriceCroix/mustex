@@ -50,7 +50,8 @@
         },
         {
             "name": "lin-test-gcc-cpp11",
-            "inherits": "lin-test-template-gcc"
+            "inherits": "lin-test-template-gcc",
+            "binaryDir": "${sourceDir}/build_lin_cpp11"
         },
         {
             "name": "lin-test-template-clang",
@@ -83,7 +84,8 @@
         },
         {
             "name": "lin-test-clang-cpp11",
-            "inherits": "lin-test-template-clang"
+            "inherits": "lin-test-template-clang",
+            "binaryDir": "${sourceDir}/build_lin_cpp11"
         },
         {
             "name": "win-test-template-msvc",
@@ -120,7 +122,8 @@
         },
         {
             "name": "win-test-msvc-cpp11",
-            "inherits": "win-test-template-msvc"
+            "inherits": "win-test-template-msvc",
+            "binaryDir": "${sourceDir}/build_win_cpp11"
         },
         {
             "name": "win-test-template-clang",
@@ -151,7 +154,8 @@
         },
         {
             "name": "win-test-clang-cpp11",
-            "inherits": "win-test-template-clang"
+            "inherits": "win-test-template-clang",
+            "binaryDir": "${sourceDir}/build_win_cpp11"
         }
     ],
     "buildPresets": [

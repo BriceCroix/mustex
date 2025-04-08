@@ -31,6 +31,8 @@ if(MUSTEX_BUILD_TESTS)
         set_property(TARGET ${TESTS_TARGET} PROPERTY CXX_STANDARD 11)
     endif()
 
+    set_property(TARGET ${TESTS_TARGET} PROPERTY CXX_STANDARD_REQUIRED true)
+
     # /Zc:__cplusplus is required to make __cplusplus accurate
     # /Zc:__cplusplus is available starting with Visual Studio 2017 version 15.7
     # (according to https://learn.microsoft.com/en-us/cpp/build/reference/zc-cplusplus)
@@ -48,21 +50,34 @@ if(MUSTEX_BUILD_TESTS)
         target_compile_options(${TESTS_TARGET} PRIVATE -Wall -Wextra -Wpedantic -Werror)
     endif()
 
-    FetchContent_Declare(
-        Catch2
-        GIT_REPOSITORY https://github.com/catchorg/Catch2.git
-        GIT_TAG        v3.4.0
-    )
-    FetchContent_MakeAvailable(Catch2)
-    target_link_libraries(${TESTS_TARGET} PRIVATE Catch2::Catch2WithMain)
-
     find_package(Threads REQUIRED)
     target_link_libraries(${TESTS_TARGET} PRIVATE Threads::Threads)
 
-    # Register catch tests to CTest
-    list(APPEND CMAKE_MODULE_PATH ${catch2_SOURCE_DIR}/extras)
+    if(MUSTEX_TESTS_CXX_20 OR MUSTEX_TESTS_CXX_17 OR MUSTEX_TESTS_CXX_14)
+        set(CATCH2_VERSION v3.4.0)
+        target_compile_definitions(${TESTS_TARGET} PRIVATE CATCH2_VERSION=3)
+    else()
+        set(CATCH2_VERSION v2.13.10)
+        target_compile_definitions(${TESTS_TARGET} PRIVATE CATCH2_VERSION=2)
+    endif()
+
+    FetchContent_Declare(
+        Catch2
+        GIT_REPOSITORY https://github.com/catchorg/Catch2.git
+        GIT_TAG        ${CATCH2_VERSION}
+    )
+    FetchContent_MakeAvailable(Catch2)
+
+    if(${CATCH2_VERSION} MATCHES "v2\.[0-9]+\.[0-9]+")
+        list(APPEND CMAKE_MODULE_PATH ${catch2_SOURCE_DIR}/contrib)
+        target_link_libraries(${TESTS_TARGET} PRIVATE Catch2::Catch2)
+    else()
+        list(APPEND CMAKE_MODULE_PATH ${catch2_SOURCE_DIR}/extras)
+        target_link_libraries(${TESTS_TARGET} PRIVATE Catch2::Catch2WithMain)
+    endif()
     include(CTest)
     include(Catch)
     enable_testing()
+    # Register catch tests to CTest 
     catch_discover_tests(${TESTS_TARGET})
 endif(MUSTEX_BUILD_TESTS)

@@ -13,6 +13,9 @@
 #    if defined(__cpp_lib_shared_timed_mutex)
 #        define _MUSTEX_HAS_SHARED_MUTEX
 #    endif
+#    if defined(__cpp_lib_integer_sequence)
+#        define _MUSTEX_HAS_INT_SEQUENCE
+#    endif
 #else // #if defined(__has_include) && __has_include(<version>)
 #    if defined(__cplusplus) && __cplusplus >= 202002LL
 #        define _MUSTEX_HAS_CONCEPTS
@@ -22,6 +25,7 @@
 #    endif
 #    if defined(__cplusplus) && __cplusplus >= 201402L
 #        define _MUSTEX_HAS_SHARED_MUTEX
+#        define _MUSTEX_HAS_INT_SEQUENCE
 #    endif
 #endif // #if defined(__has_include) && __has_include(<version>)
 
@@ -40,6 +44,7 @@
 #endif // #ifdef _MUSTEX_HAS_SHARED_MUTEX
 
 #include <mutex>
+#include <utility>
 
 namespace bcx
 {
@@ -315,8 +320,35 @@ auto get_mutex_refs(Ts &...args) -> std::tuple<decltype(get_mutex_ref(args)) &..
     return std::tie(get_mutex_ref(args)...);
 }
 
+// C++11 does not provide std::index_sequence, implement it ourselves if necessary.
+#ifdef _MUSTEX_HAS_INT_SEQUENCE
+template<size_t... _Idx>
+using bcx_index_sequence = std::index_sequence<_Idx...>;
+template<size_t _Num>
+using bcx_make_index_sequence = std::make_index_sequence<_Num>;
+#else
+template<std::size_t... Indices>
+struct bcx_index_sequence
+{
+};
+
+template<std::size_t N, std::size_t... Indices>
+struct bcx_make_index_sequence_impl : bcx_make_index_sequence_impl<N - 1, N - 1, Indices...>
+{
+};
+
+template<std::size_t... Indices>
+struct bcx_make_index_sequence_impl<0, Indices...>
+{
+    typedef bcx_index_sequence<Indices...> type;
+};
+
+template<std::size_t N>
+using bcx_make_index_sequence = typename bcx_make_index_sequence_impl<N>::type;
+#endif
+
 template<typename Tuple, std::size_t... I>
-void lock_all_impl(Tuple &mutexes, std::index_sequence<I...>)
+void lock_all_impl(Tuple &mutexes, bcx_index_sequence<I...>)
 {
     std::lock(std::get<I>(mutexes)...);
 }
@@ -325,11 +357,11 @@ template<typename Tuple>
 void lock_all(Tuple &mutexes)
 {
     constexpr std::size_t N = std::tuple_size<Tuple>::value;
-    lock_all_impl(mutexes, std::make_index_sequence<N>{});
+    lock_all_impl(mutexes, bcx_make_index_sequence<N>{});
 }
 
 template<typename Tuple, std::size_t... I>
-bool try_lock_all_impl(Tuple &mutexes, std::index_sequence<I...>)
+bool try_lock_all_impl(Tuple &mutexes, bcx_index_sequence<I...>)
 {
     // Yes -1 is the success code. https://en.cppreference.com/w/cpp/thread/try_lock
     return std::try_lock(std::get<I>(mutexes)...) == -1;
@@ -341,7 +373,7 @@ template<typename Tuple>
 bool try_lock_all(Tuple &mutexes)
 {
     constexpr std::size_t N = std::tuple_size<Tuple>::value;
-    return try_lock_all_impl(mutexes, std::make_index_sequence<N>{});
+    return try_lock_all_impl(mutexes, bcx_make_index_sequence<N>{});
 }
 
 } // namespace detail
@@ -379,7 +411,7 @@ auto try_lock_mut(Args &...args)
 #ifdef _MUSTEX_HAS_OPTIONAL
     return std::move(tuple);
 #else
-    return std::make_unique<std::tuple<decltype(detail::adopt_lock(args))...>>(std::move(tuple));
+    return std::unique_ptr<std::tuple<decltype(detail::adopt_lock(args))...>>(new auto(std::move(tuple)));
 #endif
 }
 

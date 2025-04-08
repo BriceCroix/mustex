@@ -1,4 +1,10 @@
-#include <catch2/catch_test_macros.hpp>
+#if CATCH2_VERSION == 2
+#    define CATCH_CONFIG_MAIN // This tells Catch to provide a main() - only do this in one cpp file
+#    include <catch2/catch.hpp>
+#else
+#    include <catch2/catch_test_macros.hpp>
+#endif
+
 #include <chrono>
 #include <future>
 #include <mustex/mustex.hpp>
@@ -61,6 +67,8 @@ TEST_CASE("Access mustex mutably", "[mustex]")
     REQUIRE(handle->do_things() == 666);
 }
 
+#ifdef _MUSTEX_HAS_SHARED_MUTEX
+// Without shared mutex there can only be one reader at a time and this code would deadlock.
 TEST_CASE("Lock mustex readonly without deadlock", "[mustex]")
 {
     bcx::Mustex<std::string> name("Batman");
@@ -78,6 +86,7 @@ TEST_CASE("Lock mustex readonly without deadlock", "[mustex]")
     // The simple fact that this test ends is a proof of simultaneous read-access.
     REQUIRE(true);
 }
+#endif // #ifdef _MUSTEX_HAS_SHARED_MUTEX
 
 TEST_CASE("Lock mustex readonly twice", "[mustex]")
 {
