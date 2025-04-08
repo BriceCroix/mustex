@@ -204,7 +204,7 @@ class MySharedLock
 }
 
 template<typename T>
-using MyMustex = bcx::Mustex<T, MySharedMutex, MySharedLock<MySharedMutex>, std::unique_lock>;
+using MyMustex = bcx::Mustex<T, MySharedMutex, MySharedLock, std::unique_lock>;
 
 int main(int argc, char* argv[])
 {

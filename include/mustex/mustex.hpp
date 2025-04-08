@@ -61,7 +61,7 @@ using DefaultMustexWriteLock = std::unique_lock<M>;
 } // namespace detail
 
 // Forward declares
-template<typename T, class M, class RL, class WL>
+template<typename T, class M, template<class> class RL, template<class> class WL>
 class Mustex;
 
 namespace detail
@@ -71,7 +71,7 @@ struct is_mustex : std::false_type
 {
 };
 
-template<typename T, class M, class RL, class WL>
+template<typename T, class M, template<class> class RL, template<class> class WL>
 struct is_mustex<Mustex<T, M, RL, WL>> : std::true_type
 {
 };
@@ -107,13 +107,13 @@ auto adopt_lock(T &m) -> typename std::enable_if<is_mustex<T>::value, typename T
 
 /// @brief Allow to access Mustex data, mutably or not depending on method used to construct.
 /// @tparam T Type of data to be accessed, potentially const-qualified.
-/// @tparam L Type of lock owned by this class, equal to either WL.
+/// @tparam L Type of lock owned by this class.
 template<typename T, class L>
 class MustexHandle
 {
 public:
     // Only parent Mustex can instantiate this class.
-    template<class MT, class MM, class MRL, class MWL>
+    template<class MT, class MM, template<class> class MRL, template<class> class MWL>
     friend class Mustex;
 
     /// @brief The type of contained value, exposed for convenience.
@@ -166,8 +166,8 @@ private:
 template<
     class T,
     class M = detail::DefaultMustexMutex,
-    class RL = detail::DefaultMustexReadLock<M>,
-    class WL = detail::DefaultMustexWriteLock<M>>
+    template<class> class RL = detail::DefaultMustexReadLock,
+    template<class> class WL = detail::DefaultMustexWriteLock>
 class Mustex
 {
 public:
@@ -176,9 +176,9 @@ public:
     /// @brief The type of mutex used, exposed for convenience.
     using mutex_t = M;
     /// @brief The type of handle used to access data.
-    using Handle = MustexHandle<const data_t, RL>;
+    using Handle = MustexHandle<const data_t, RL<M>>;
     /// @brief The type of handle used to access data mutably.
-    using HandleMut = MustexHandle<data_t, WL>;
+    using HandleMut = MustexHandle<data_t, WL<M>>;
 
     template<typename... Args>
 #ifdef _MUSTEX_HAS_CONCEPTS
@@ -208,13 +208,13 @@ public:
     Mustex &operator=(const Mustex &other)
         requires std::is_assignable<T, const T &>::value
     {
-        WL lock(m_mutex);
+        WL<M> lock(m_mutex);
         m_data = *other.lock();
     }
     Mustex &operator=(Mustex &&other)
         requires std::is_assignable<T, T &&>::value
     {
-        WL lock(m_mutex);
+        WL<M> lock(m_mutex);
         m_data = std::move(*other.lock_mut());
     }
 #else // #ifdef _MUSTEX_HAS_CONCEPTS
@@ -236,7 +236,7 @@ public:
 #ifdef _MUSTEX_HAS_OPTIONAL
     std::optional<Handle> try_lock() const
     {
-        RL lock(m_mutex, std::try_to_lock);
+        RL<M> lock(m_mutex, std::try_to_lock);
         if (lock.owns_lock())
             return Handle(std::move(lock), m_data);
         return {};
@@ -244,7 +244,7 @@ public:
 #else // #ifdef _MUSTEX_HAS_OPTIONAL
     std::unique_ptr<Handle> try_lock() const
     {
-        RL lock(m_mutex, std::try_to_lock);
+        RL<M> lock(m_mutex, std::try_to_lock);
         if (lock.owns_lock())
             return std::unique_ptr<Handle>(
                 new Handle(std::move(lock), m_data)
@@ -255,7 +255,7 @@ public:
 
     Handle lock() const
     {
-        return Handle(RL(m_mutex), m_data);
+        return Handle(RL<M>(m_mutex), m_data);
     }
 
     auto lock(std::try_to_lock_t) const -> decltype(std::declval<Mustex>().try_lock())
@@ -266,7 +266,7 @@ public:
 #ifdef _MUSTEX_HAS_OPTIONAL
     std::optional<HandleMut> try_lock_mut()
     {
-        WL lock(m_mutex, std::try_to_lock);
+        WL<M> lock(m_mutex, std::try_to_lock);
         if (lock.owns_lock())
             return HandleMut(std::move(lock), m_data);
         return {};
@@ -274,7 +274,7 @@ public:
 #else // #ifdef _MUSTEX_HAS_OPTIONAL
     std::unique_ptr<HandleMut> try_lock_mut()
     {
-        WL lock(m_mutex, std::try_to_lock);
+        WL<M> lock(m_mutex, std::try_to_lock);
         if (lock.owns_lock())
             return std::unique_ptr<HandleMut>(
                 new HandleMut(std::move(lock), m_data)
@@ -285,7 +285,7 @@ public:
 
     HandleMut lock_mut()
     {
-        return HandleMut(WL(m_mutex), m_data);
+        return HandleMut(WL<M>(m_mutex), m_data);
     }
 
     auto lock_mut(std::try_to_lock_t) -> decltype(std::declval<Mustex>().try_lock_mut())
@@ -302,7 +302,7 @@ private:
     friend auto detail::get_mutex_ref(U &m) -> typename std::enable_if<detail::is_mustex<U>::value, typename U::mutex_t &>::type;
     template<typename U>
     friend auto detail::adopt_lock(U &m) -> typename std::enable_if<detail::is_mustex<U>::value, typename U::HandleMut>::type;
-    HandleMut lock_mut(std::adopt_lock_t) { return HandleMut(WL(m_mutex, std::adopt_lock), m_data); }
+    HandleMut lock_mut(std::adopt_lock_t) { return HandleMut(WL<M>(m_mutex, std::adopt_lock), m_data); }
 };
 
 namespace detail
