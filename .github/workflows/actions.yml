@@ -1,5 +1,5 @@
 name: Testing
-run-name: Run tests for "${{ github.event.head_commit.message }}"
+run-name: Run tests for "${{ github.event.pull_request.title || github.event.head_commit.message }}"
 on:
   push:
     branches:
