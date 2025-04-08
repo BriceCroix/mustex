@@ -402,7 +402,7 @@ TEST_CASE("Synchronous lock used by mutex", "[mustex]")
         std::launch::async,
         [&m, &started]
         {
-            std::lock_guard lock(m);
+            std::lock_guard<decltype(m)> lock(m);
             started = true;
             std::this_thread::sleep_for(std::chrono::milliseconds(100));
         }
@@ -470,7 +470,7 @@ TEST_CASE("Synchronous try lock", "[mustex]")
             std::launch::async,
             [&m, &started]
             {
-                std::lock_guard lock(m);
+                std::lock_guard<decltype(m)> lock(m);
                 started = true;
                 std::this_thread::sleep_for(std::chrono::milliseconds(100));
             }
