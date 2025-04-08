@@ -5,6 +5,7 @@ build*/
 .vscode/
 .idea/
 .vs/
+.devcontainer
 
 # Misc
 CMakeUserPresets.json
