@@ -11,6 +11,7 @@ and tries to mimic its functionalities.
 
 ## Features
 
+- Data-owning mutex type `Mustex<T>` preventing from *forgetting* to lock data.
 - One writer at a time with `lock_mut()`, `try_lock_mut()`
 
 ```cpp
@@ -25,24 +26,23 @@ bcx::Mustex<float> mustex(42.0f);
 - Multiple simultaneous readers with `lock()`, `try_lock()`.
 
 ```cpp
-bcx::Mustex<int> mustex(42);
-{
-    auto thread1 = std::async(
-        std::launch::async,
-        [&mustex]{auto handle = mustex.lock(); /* do things with *handle */}
-    );
-    auto thread2 = std::async(
-        std::launch::async,
-        [&mustex]{auto handle = mustex.lock(); /* do things with *handle */}
-    );
-    // These two asynchronous blocks can execute in parallel without blocking the other.
-    thread1.wait();
-    thread2.wait();
-}
+bcx::Mustex<std::string> name("Batman");
+auto handle = name.lock();
+auto future = std::async(
+    std::launch::async, 
+    [&name]
+    {
+        auto handle = name.lock();
+        std::cout << "Hello " << *handle << " from child thread !" << std::endl;
+    }
+);
+std::cout << "Hello " << *handle << " from parent thread !" << std::endl;
+future.wait();
+// Yay that does not deadlock !
 ```
 
 > [!NOTE]  
-> Simultaneous readers are enabled by default using C++17 and above, but can be enabled for C++11
+> Simultaneous readers are enabled by default using C++14 and above, but can be enabled for C++11
 > by providing your own implementation of *SharedLockable* mutexes (or from third-party).
 > See [relevant section](#enable-simultaneous-multiple-readers-for-c11) on how to do this.
 
@@ -210,7 +210,8 @@ int main(int argc, char* argv[])
 {
     MyMustex<int> value(42);
     auto handle = value.lock();
-    auto handle2 = value.lock();
+    auto future = std::async(std::launch::async, [&value]{ auto handle = value.lock(); });
+    future.wait();
     // Yay that does not deadlock !
 }
 
