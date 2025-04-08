@@ -18,6 +18,8 @@ public:
         return m_data;
     };
 
+    int get_data() { return m_data; }
+
 private:
     int m_data;
 };
@@ -333,3 +335,151 @@ TEST_CASE("Copy mustex used readonly", "[mustex]")
     REQUIRE(tac - tic < std::chrono::milliseconds(100));
 }
 #endif // #ifdef _MUSTEX_HAS_CONCEPTS
+
+TEST_CASE("Synchronous lock unused", "[mustex]")
+{
+    Mustex<MyClass> shared1(1);
+    Mustex<float> shared2(2.f);
+    std::mutex m;
+
+    auto locks = lock_mut(shared1, shared2, m);
+
+#if defined(__cplusplus) && __cplusplus >= 201703L
+    auto &[handle1, handle2, lock] = locks;
+#else // #if defined(__cplusplus) && __cplusplus >= 201703L
+    auto &handle1 = std::get<0>(locks);
+    auto &handle2 = std::get<1>(locks);
+    auto &lock = std::get<2>(locks);
+#endif // #if defined(__cplusplus) && __cplusplus >= 201703L
+
+    REQUIRE(handle1->get_data() == 1);
+    REQUIRE(*handle2 == 2.f);
+    handle1->do_things_mut();
+    *handle2 += 8.f;
+    REQUIRE(handle1->get_data() == 3);
+    REQUIRE(*handle2 == 10.f);
+    REQUIRE(lock.owns_lock());
+}
+
+TEST_CASE("Synchronous lock used by mustex", "[mustex]")
+{
+    Mustex<MyClass> shared1(1);
+    Mustex<float> shared2(2.f);
+    std::mutex m;
+
+    auto tic = std::chrono::high_resolution_clock::now();
+
+    std::atomic<bool> started{false};
+    auto future = std::async(
+        std::launch::async,
+        [&shared1, &started]
+        {
+            auto handle = shared1.lock();
+            started = true;
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        }
+    );
+    // Make sure the future starts.
+    while (!started)
+        ;
+
+    auto locks = lock_mut(shared1, shared2, m);
+
+    auto tac = std::chrono::high_resolution_clock::now();
+    REQUIRE(tac - tic >= std::chrono::milliseconds(100));
+}
+
+TEST_CASE("Synchronous lock used by mutex", "[mustex]")
+{
+    Mustex<MyClass> shared1(1);
+    Mustex<float> shared2(2.f);
+    std::mutex m;
+
+    auto tic = std::chrono::high_resolution_clock::now();
+
+    std::atomic<bool> started{false};
+    auto future = std::async(
+        std::launch::async,
+        [&m, &started]
+        {
+            std::lock_guard lock(m);
+            started = true;
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        }
+    );
+    // Make sure the future starts.
+    while (!started)
+        ;
+
+    auto locks = lock_mut(shared1, shared2, m);
+
+    auto tac = std::chrono::high_resolution_clock::now();
+    REQUIRE(tac - tic >= std::chrono::milliseconds(100));
+}
+
+TEST_CASE("Synchronous try lock", "[mustex]")
+{
+    Mustex<MyClass> shared1(1);
+    Mustex<float> shared2(2.f);
+    std::mutex m;
+
+    {
+        // Try lock while nothing is used.
+        auto locks = try_lock_mut(shared1, shared2, m);
+
+        REQUIRE(locks);
+#if defined(__cplusplus) && __cplusplus >= 201703L
+        auto &[handle1, handle2, lock] = *locks;
+#else // #if defined(__cplusplus) && __cplusplus >= 201703L
+        auto &handle1 = std::get<0>(*locks);
+        auto &handle2 = std::get<1>(*locks);
+        auto &lock = std::get<2>(*locks);
+#endif // #if defined(__cplusplus) && __cplusplus >= 201703L
+
+        REQUIRE(handle1->get_data() == 1);
+        REQUIRE(*handle2 == 2.f);
+        handle1->do_things_mut();
+        *handle2 += 8.f;
+        REQUIRE(handle1->get_data() == 3);
+        REQUIRE(*handle2 == 10.f);
+        REQUIRE(lock.owns_lock());
+    }
+    {
+        // Now try lock while a mustex handle exists.
+        std::atomic<bool> started{false};
+        auto future = std::async(
+            std::launch::async,
+            [&shared1, &started]
+            {
+                auto handle1 = shared1.lock();
+                started = true;
+                std::this_thread::sleep_for(std::chrono::milliseconds(100));
+            }
+        );
+        // Make sure the future starts.
+        while (!started)
+            ;
+        auto locks = try_lock_mut(shared1, shared2, m);
+        REQUIRE_FALSE(locks);
+        future.wait();
+    }
+    {
+        // Now try lock while a mutex lock_guard exists.
+        std::atomic<bool> started{false};
+        auto future = std::async(
+            std::launch::async,
+            [&m, &started]
+            {
+                std::lock_guard lock(m);
+                started = true;
+                std::this_thread::sleep_for(std::chrono::milliseconds(100));
+            }
+        );
+        // Make sure the future starts.
+        while (!started)
+            ;
+        auto locks = try_lock_mut(shared1, shared2, m);
+        REQUIRE_FALSE(locks);
+        future.wait();
+    }
+}

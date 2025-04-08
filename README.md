@@ -39,6 +39,18 @@ bcx::Mustex<int> mustex(42);
 > by providing your own implementation of *SharedLockable* mutexes (or from third-party).
 > See [relevant section](#enable-simultaneous-multiple-readers-for-c11) on how to do this.
 
+- Deadlock-free multiple access.
+
+```cpp
+bcx::Mustex<int> mustex1(1);
+bcx::Mustex<float> mustex2(2.f);
+std::mutex m;
+{
+    auto [handle1, handle2, lock] = bcx::lock_mut(shared1, shared2, m);
+    // ...
+}
+```
+
 ## More realistic example
 
 The following example demonstrates how it is possible to have 2 consumers for 1 producer sharing accesses to a single value. In a real-case scenario the consumers could be a logger-thread and a thread to notify clients on the network for instance.
