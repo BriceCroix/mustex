@@ -170,17 +170,37 @@ int main(int argc, char *argv[])
 
 ## Advanced use
 
-### Using custom mutex type
+### Using custom mutex or lock types
 
-TODO
+The `Mustex` class internally uses the mutexes and locks classes provided by the standard library :
+- `std::shared_timed_mutex` if you are compiling for a c++ standard that features it.
+- `std::mutex` if you are compiling without C++14 support.
+- `std::unique_lock` for write-accesses to the protected data.
+  Also used for read-accesses if compiling for a c++ standard that does not feature `std::shared_lock`.
+- `std::shared_lock` for read-accesses to the protected data.
+
+For a reason or another, you may want to use your own mutex and lock types instead of the ones
+provided by the `stdlib`. This can be accomplished by using the full signature of the `Mustex`
+class, that allow to select the mentioned classes.
+
+```cpp
+template<typename T>
+using MyMustex = bcx::Mustex<T, MySharedMutex, MyReadLock, MyWriteLock>;
+
+int main(int argc, char* argv[])
+{
+    MyMustex<int> value(42);
+    // You are now free to use this class as usual.
+}
+```
 
 ### Enable simultaneous multiple readers for C++11
 
 The *simultaneous multiple readers* feature of this library is made possible thanks to
-`std::shared_mutex` and `std::shared_lock` from C++17.
+`std::shared_timed_mutex` and `std::shared_lock` from C++14.
 
 If you can provide your own implementation for these two types you can enable this feature by using
-the full signature of the `Mustex` class.
+the full signature of the `Mustex` class, just like in the [previous section](#using-custom-mutex-or-lock-types).
 
 You may also use third-party implementations such as
 [Boost's](http://www.boost.org/doc/libs/1_41_0/doc/html/thread/synchronization.html#thread.synchronization.mutex_types.shared_mutex),
