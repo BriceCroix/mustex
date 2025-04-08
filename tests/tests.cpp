@@ -336,7 +336,7 @@ TEST_CASE("Copy mustex used readonly", "[mustex]")
 }
 #endif // #ifdef _MUSTEX_HAS_CONCEPTS
 
-TEST_CASE("Synchronous lock", "[mustex]")
+TEST_CASE("Synchronous lock unused", "[mustex]")
 {
     Mustex<MyClass> shared1(1);
     Mustex<float> shared2(2.f);
@@ -359,6 +359,62 @@ TEST_CASE("Synchronous lock", "[mustex]")
     REQUIRE(handle1->get_data() == 3);
     REQUIRE(*handle2 == 10.f);
     REQUIRE(lock.owns_lock());
+}
+
+TEST_CASE("Synchronous lock used by mustex", "[mustex]")
+{
+    Mustex<MyClass> shared1(1);
+    Mustex<float> shared2(2.f);
+    std::mutex m;
+
+    auto tic = std::chrono::high_resolution_clock::now();
+
+    std::atomic<bool> started{false};
+    auto future = std::async(
+        std::launch::async,
+        [&shared1, &started]
+        {
+            auto handle = shared1.lock();
+            started = true;
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        }
+    );
+    // Make sure the future starts.
+    while (!started)
+        ;
+
+    auto locks = lock_mut(shared1, shared2, m);
+
+    auto tac = std::chrono::high_resolution_clock::now();
+    REQUIRE(tac - tic >= std::chrono::milliseconds(100));
+}
+
+TEST_CASE("Synchronous lock used by mutex", "[mustex]")
+{
+    Mustex<MyClass> shared1(1);
+    Mustex<float> shared2(2.f);
+    std::mutex m;
+
+    auto tic = std::chrono::high_resolution_clock::now();
+
+    std::atomic<bool> started{false};
+    auto future = std::async(
+        std::launch::async,
+        [&m, &started]
+        {
+            std::lock_guard lock(m);
+            started = true;
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        }
+    );
+    // Make sure the future starts.
+    while (!started)
+        ;
+
+    auto locks = lock_mut(shared1, shared2, m);
+
+    auto tac = std::chrono::high_resolution_clock::now();
+    REQUIRE(tac - tic >= std::chrono::milliseconds(100));
 }
 
 TEST_CASE("Synchronous try lock", "[mustex]")
