@@ -189,9 +189,6 @@ You may also use third-party implementations such as
 [HowardHinnant's](https://howardhinnant.github.io/shared_mutex.cpp),
 [Emanem's](https://github.com/Emanem/shared_mutex), etc.
 
-Alternatively if you are using C++14, `std::shared_lock` entered the standard in this version, but
-not `std::shared_mutex`...
-
 ```cpp
 #include <mustex/mustex.hpp>
 

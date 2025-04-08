@@ -6,8 +6,8 @@ set(BCX_MUSTEX_TARGET_NAME "bcx_mustex")
 
 option(MUSTEX_BUILD_TESTS  "Enable build of unit tests." OFF)
 option(MUSTEX_TESTS_CXX_20 "Use c++ standard 20 and above for tests." ON)
-option(MUSTEX_TESTS_CXX_14 "Use c++ standard 17 for tests." OFF)
-option(MUSTEX_TESTS_CXX_17 "Use c++ standard 14 for tests." OFF)
+option(MUSTEX_TESTS_CXX_17 "Use c++ standard 17 for tests." OFF)
+option(MUSTEX_TESTS_CXX_14 "Use c++ standard 14 for tests." OFF)
 
 add_library(${BCX_MUSTEX_TARGET_NAME} INTERFACE)
 target_include_directories(${BCX_MUSTEX_TARGET_NAME} INTERFACE include)
