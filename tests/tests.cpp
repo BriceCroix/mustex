@@ -61,6 +61,24 @@ TEST_CASE("Access mustex mutably", "[mustex]")
     REQUIRE(handle->do_things() == 666);
 }
 
+TEST_CASE("Lock mustex readonly without deadlock", "[mustex]")
+{
+    bcx::Mustex<std::string> name("Batman");
+    auto handle = name.lock();
+    auto future = std::async(
+        std::launch::async,
+        [&name]
+        {
+            auto handle = name.lock();
+            volatile std::string copy = *handle;
+        }
+    );
+    volatile std::string copy = *handle;
+    future.wait();
+    // The simple fact that this test ends is a proof of simultaneous read-access.
+    REQUIRE(true);
+}
+
 TEST_CASE("Lock mustex readonly twice", "[mustex]")
 {
     Mustex<int> m(42);
