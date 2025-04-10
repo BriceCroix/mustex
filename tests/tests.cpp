@@ -318,7 +318,11 @@ TEST_CASE("Move handle (assign)", "[mustex]")
 TEST_CASE("Copy mustex unused (construct)", "[mustex]")
 {
     Mustex<int> m(42);
+
+    auto tic = std::chrono::high_resolution_clock::now();
     decltype(m) m2(m);
+    auto tac = std::chrono::high_resolution_clock::now();
+    REQUIRE(tac - tic < std::chrono::milliseconds(10));
 
     REQUIRE(*m.lock() == 42);
     REQUIRE(*m2.lock() == 42);
@@ -379,7 +383,7 @@ TEST_CASE("Copy mustex used readonly (construct)", "[mustex]")
     REQUIRE(*m2.lock() == 42);
 
     auto tac = std::chrono::high_resolution_clock::now();
-    REQUIRE(tac - tic < std::chrono::milliseconds(100));
+    REQUIRE(tac - tic < std::chrono::milliseconds(80));
 }
 #endif // #ifdef _MUSTEX_HAS_CONCEPTS
 
@@ -389,7 +393,10 @@ TEST_CASE("Copy mustex unused (assign)", "[mustex]")
     Mustex<int> m1(42);
     Mustex<int> m2(3);
 
+    auto tic = std::chrono::high_resolution_clock::now();
     m2 = m1;
+    auto tac = std::chrono::high_resolution_clock::now();
+    REQUIRE(tac - tic < std::chrono::milliseconds(10));
 
     REQUIRE(*m1.lock() == 42);
     REQUIRE(*m2.lock() == 42);
@@ -455,6 +462,153 @@ TEST_CASE("Copy mustex used readonly (assign)", "[mustex]")
     REQUIRE(*m2.lock() == 42);
     REQUIRE(*m.lock() == 42);
     REQUIRE(tac - tic < std::chrono::milliseconds(80));
+}
+#endif // #ifdef _MUSTEX_HAS_CONCEPTS
+
+#ifdef _MUSTEX_HAS_CONCEPTS
+TEST_CASE("Move mustex unused (construct)", "[mustex]")
+{
+    Mustex<int> m(42);
+
+    auto tic = std::chrono::high_resolution_clock::now();
+    decltype(m) m2(std::move(m));
+    auto tac = std::chrono::high_resolution_clock::now();
+
+    REQUIRE(tac - tic < std::chrono::milliseconds(10));
+    REQUIRE(*m2.lock() == 42);
+}
+#endif // #ifdef _MUSTEX_HAS_CONCEPTS
+
+#ifdef _MUSTEX_HAS_CONCEPTS
+TEST_CASE("Move mustex used mutably (construct)", "[mustex]")
+{
+    auto tic = std::chrono::high_resolution_clock::now();
+
+    Mustex<int> m(42);
+
+    std::atomic<bool> started{false};
+    auto future = std::async(
+        [&m, &started]
+        {
+            auto handle = m.lock_mut();
+            started = true;
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        }
+    );
+    // Make sure the future starts.
+    while (!started)
+        ;
+
+    decltype(m) m2(std::move(m));
+
+    REQUIRE(*m2.lock() == 42);
+
+    auto tac = std::chrono::high_resolution_clock::now();
+    REQUIRE(tac - tic >= std::chrono::milliseconds(100));
+}
+#endif // #ifdef _MUSTEX_HAS_CONCEPTS
+
+#ifdef _MUSTEX_HAS_CONCEPTS
+TEST_CASE("Move mustex used readonly (construct)", "[mustex]")
+{
+    auto tic = std::chrono::high_resolution_clock::now();
+
+    Mustex<int> m(42);
+
+    std::atomic<bool> started{false};
+    auto future = std::async(
+        [&m, &started]
+        {
+            auto handle = m.lock();
+            started = true;
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        }
+    );
+    // Make sure the future starts.
+    while (!started)
+        ;
+
+    decltype(m) m2(std::move(m));
+
+    REQUIRE(*m2.lock() == 42);
+
+    auto tac = std::chrono::high_resolution_clock::now();
+    REQUIRE(tac - tic >= std::chrono::milliseconds(100));
+}
+#endif // #ifdef _MUSTEX_HAS_CONCEPTS
+
+#ifdef _MUSTEX_HAS_CONCEPTS
+TEST_CASE("Move mustex unused (assign)", "[mustex]")
+{
+    Mustex<int> m(42);
+    decltype(m) m2(5);
+
+    auto tic = std::chrono::high_resolution_clock::now();
+    m2 = std::move(m);
+    auto tac = std::chrono::high_resolution_clock::now();
+
+    REQUIRE(tac - tic < std::chrono::milliseconds(10));
+    REQUIRE(*m2.lock() == 42);
+}
+#endif // #ifdef _MUSTEX_HAS_CONCEPTS
+
+#ifdef _MUSTEX_HAS_CONCEPTS
+TEST_CASE("Move mustex used mutably (assign)", "[mustex]")
+{
+    auto tic = std::chrono::high_resolution_clock::now();
+
+    Mustex<int> m(42);
+    Mustex<int> m2(2);
+
+    std::atomic<bool> started{false};
+    auto future = std::async(
+        [&m, &started]
+        {
+            auto handle = m.lock_mut();
+            started = true;
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        }
+    );
+    // Make sure the future starts.
+    while (!started)
+        ;
+
+    m2 = std::move(m);
+
+    auto tac = std::chrono::high_resolution_clock::now();
+
+    REQUIRE(*m2.lock() == 42);
+    REQUIRE(tac - tic >= std::chrono::milliseconds(100));
+}
+#endif // #ifdef _MUSTEX_HAS_CONCEPTS
+
+#ifdef _MUSTEX_HAS_CONCEPTS
+TEST_CASE("Move mustex used readonly (assign)", "[mustex]")
+{
+    auto tic = std::chrono::high_resolution_clock::now();
+
+    Mustex<int> m(42);
+    Mustex<int> m2(2);
+
+    std::atomic<bool> started{false};
+    auto future = std::async(
+        [&m, &started]
+        {
+            auto handle = m.lock();
+            started = true;
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        }
+    );
+    // Make sure the future starts.
+    while (!started)
+        ;
+
+    m2 = std::move(m);
+
+    auto tac = std::chrono::high_resolution_clock::now();
+
+    REQUIRE(*m2.lock() == 42);
+    REQUIRE(tac - tic >= std::chrono::milliseconds(100));
 }
 #endif // #ifdef _MUSTEX_HAS_CONCEPTS
 

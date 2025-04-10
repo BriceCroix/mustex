@@ -207,7 +207,7 @@ public:
 
     Mustex(Mustex &&other)
         requires std::is_move_constructible<T>::value
-        : m_data(*other.lock())
+        : m_data(std::move(*other.lock_mut()))
         , m_mutex{}
     {
     }
