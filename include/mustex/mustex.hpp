@@ -335,14 +335,6 @@ private:
 
 namespace detail
 {
-
-/// @brief Helper to extract mutex refs for std::lock.
-template<typename... Ts>
-auto get_mutex_refs(Ts &...args) -> std::tuple<decltype(get_mutex_ref(args)) &...>
-{
-    return std::tie(get_mutex_ref(args)...);
-}
-
 // C++11 does not provide std::index_sequence, implement it ourselves if necessary.
 #ifdef _MUSTEX_HAS_INT_SEQUENCE
 template<size_t... _Idx>
