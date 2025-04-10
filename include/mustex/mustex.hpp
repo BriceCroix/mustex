@@ -212,14 +212,14 @@ public:
     {
     }
     Mustex &operator=(const Mustex &other)
-        requires std::is_assignable<T, const T &>::value
+        requires std::is_assignable<T &, const T &>::value
     {
         WL<M> lock(m_mutex);
         m_data = *other.lock();
         return *this;
     }
     Mustex &operator=(Mustex &&other)
-        requires std::is_assignable<T, T &&>::value
+        requires std::is_assignable<T &, T &&>::value
     {
         WL<M> lock(m_mutex);
         m_data = std::move(*other.lock_mut());
@@ -228,10 +228,11 @@ public:
 #else // #ifdef _MUSTEX_HAS_CONCEPTS
     // Without c++20 these cannot be simply conditionally defined.
     // See this great article as of why : https://akrzemi1.wordpress.com/2015/03/02/a-conditional-copy-constructor/
-    // The workaround is to construct Mustex after locking the other :
+    // The workaround is to directly access data by locking the other :
     //
     // Mustex<int> m(42);
-    // Mustex<int> m2(*m.lock()) // Or lock_mut()
+    // Mustex<int> m2(*m.lock());
+    // m = *m2.lock();
 
     Mustex(const Mustex &) = delete;
     Mustex(Mustex &&other) = delete;
