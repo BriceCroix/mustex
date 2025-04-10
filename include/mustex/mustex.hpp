@@ -49,6 +49,10 @@
 namespace bcx
 {
 
+// Forward declares
+template<typename T, class M, template<class> class RL, template<class> class WL>
+class Mustex;
+
 namespace detail
 {
 #ifdef _MUSTEX_HAS_SHARED_MUTEX
@@ -63,14 +67,7 @@ using DefaultMustexMutex = std::mutex;
 
 template<class M>
 using DefaultMustexWriteLock = std::unique_lock<M>;
-} // namespace detail
 
-// Forward declares
-template<typename T, class M, template<class> class RL, template<class> class WL>
-class Mustex;
-
-namespace detail
-{
 template<typename U>
 struct is_mustex : std::false_type
 {
@@ -165,30 +162,16 @@ bool try_lock_all(Tuple &mutexes)
     return try_lock_all_impl(mutexes, bcx_make_index_sequence<N>{});
 }
 
-} // namespace detail
-
-/// @brief Lock mutably any given Mustex or raw mutex using deadlock avoidance.
-/// @tparam WL Type of lock to use on raw mutexes.
-/// @tparam ...Args Types of given arguments.
-/// @param ...args Arbitrary number of Mustex and/or raw mutex.
-/// @return Tuple containing a Mustex::HandleMut for each given Mustex, and a lock for each raw mutex.
-template<template<class> class WL = detail::DefaultMustexWriteLock, typename... Args>
-auto lock_mut(Args &...args)
-    -> std::tuple<decltype(detail::adopt_lock<WL>(args))...>
+template<template<class> class WL, typename... Args>
+auto lock_mut_impl(Args &...args) -> std::tuple<decltype(detail::adopt_lock<WL>(args))...>
 {
     auto mutex_refs = std::tie(detail::get_mutex_ref(args)...);
     detail::lock_all(mutex_refs);
     return std::make_tuple(detail::adopt_lock<WL>(args)...);
 }
 
-/// @brief Tries to lock mutably any given Mustex or raw mutex using deadlock avoidance.
-/// @tparam WL Type of lock to use on raw mutexes.
-/// @tparam ...Args Types of given arguments.
-/// @param ...args Arbitrary number of Mustex and/or raw mutex.
-/// @return Optional tuple. Contains nothing if at least one argument could not be locked.
-///         Otherwise contains a Mustex::HandleMut for each given Mustex, and a lock for each raw mutex.
-template<template<class> class WL = detail::DefaultMustexWriteLock, typename... Args>
-auto try_lock_mut(Args &...args)
+template<template<class> class WL, typename... Args>
+auto try_lock_mut_impl(Args &...args)
 #ifdef _MUSTEX_HAS_OPTIONAL
     -> std::optional<std::tuple<decltype(detail::adopt_lock<WL>(args))...>>
 #else
@@ -204,6 +187,31 @@ auto try_lock_mut(Args &...args)
 #else
     return std::unique_ptr<std::tuple<decltype(detail::adopt_lock<WL>(args))...>>(new auto(std::move(tuple)));
 #endif
+}
+
+} // namespace detail
+
+/// @brief Lock mutably any given Mustex or raw mutex using deadlock avoidance.
+/// @tparam WL Type of lock to use on raw mutexes.
+/// @tparam ...Args Types of given arguments.
+/// @param ...args Arbitrary number of Mustex and/or raw mutex.
+/// @return Tuple containing a Mustex::HandleMut for each given Mustex, and a lock for each raw mutex.
+template<template<class> class WL = detail::DefaultMustexWriteLock, typename... Args>
+auto lock_mut(Args &...args) -> decltype(detail::lock_mut_impl<WL>(args...))
+{
+    return detail::lock_mut_impl<WL>(args...);
+}
+
+/// @brief Tries to lock mutably any given Mustex or raw mutex using deadlock avoidance.
+/// @tparam WL Type of lock to use on raw mutexes.
+/// @tparam ...Args Types of given arguments.
+/// @param ...args Arbitrary number of Mustex and/or raw mutex.
+/// @return Optional tuple. Contains nothing if at least one argument could not be locked.
+///         Otherwise contains a Mustex::HandleMut for each given Mustex, and a lock for each raw mutex.
+template<template<class> class WL = detail::DefaultMustexWriteLock, typename... Args>
+auto try_lock_mut(Args &...args) -> decltype(detail::try_lock_mut_impl<WL>(args...))
+{
+    return detail::try_lock_mut_impl<WL>(args...);
 }
 
 /// @brief Allow to access Mustex data, mutably or not depending on method used to construct.
