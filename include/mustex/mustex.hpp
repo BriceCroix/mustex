@@ -108,7 +108,103 @@ auto adopt_lock(T &m) -> typename std::enable_if<is_mustex<T>::value, typename T
 {
     return m.lock_mut(std::adopt_lock);
 }
+
+// C++11 does not provide std::index_sequence, implement it ourselves if necessary.
+#ifdef _MUSTEX_HAS_INT_SEQUENCE
+template<size_t... _Idx>
+using bcx_index_sequence = std::index_sequence<_Idx...>;
+template<size_t _Num>
+using bcx_make_index_sequence = std::make_index_sequence<_Num>;
+#else
+template<std::size_t... Indices>
+struct bcx_index_sequence
+{
+};
+
+template<std::size_t N, std::size_t... Indices>
+struct bcx_make_index_sequence_impl : bcx_make_index_sequence_impl<N - 1, N - 1, Indices...>
+{
+};
+
+template<std::size_t... Indices>
+struct bcx_make_index_sequence_impl<0, Indices...>
+{
+    typedef bcx_index_sequence<Indices...> type;
+};
+
+template<std::size_t N>
+using bcx_make_index_sequence = typename bcx_make_index_sequence_impl<N>::type;
+#endif
+
+template<typename Tuple, std::size_t... I>
+void lock_all_impl(Tuple &mutexes, bcx_index_sequence<I...>)
+{
+    std::lock(std::get<I>(mutexes)...);
+}
+
+template<typename Tuple>
+void lock_all(Tuple &mutexes)
+{
+    constexpr std::size_t N = std::tuple_size<Tuple>::value;
+    lock_all_impl(mutexes, bcx_make_index_sequence<N>{});
+}
+
+template<typename Tuple, std::size_t... I>
+bool try_lock_all_impl(Tuple &mutexes, bcx_index_sequence<I...>)
+{
+    // Yes -1 is the success code. https://en.cppreference.com/w/cpp/thread/try_lock
+    return std::try_lock(std::get<I>(mutexes)...) == -1;
+}
+
+/// @brief Try to lock all given mutexes.
+/// @return True for success.
+template<typename Tuple>
+bool try_lock_all(Tuple &mutexes)
+{
+    constexpr std::size_t N = std::tuple_size<Tuple>::value;
+    return try_lock_all_impl(mutexes, bcx_make_index_sequence<N>{});
+}
+
 } // namespace detail
+
+/// @brief Lock mutably any given Mustex or raw mutex using deadlock avoidance.
+/// @tparam WL Type of lock to use on raw mutexes.
+/// @tparam ...Args Types of given arguments.
+/// @param ...args Arbitrary number of Mustex and/or raw mutex.
+/// @return Tuple containing a Mustex::HandleMut for each given Mustex, and a lock for each raw mutex.
+template<template<class> class WL = detail::DefaultMustexWriteLock, typename... Args>
+auto lock_mut(Args &...args)
+    -> std::tuple<decltype(detail::adopt_lock<WL>(args))...>
+{
+    auto mutex_refs = std::tie(detail::get_mutex_ref(args)...);
+    detail::lock_all(mutex_refs);
+    return std::make_tuple(detail::adopt_lock<WL>(args)...);
+}
+
+/// @brief Tries to lock mutably any given Mustex or raw mutex using deadlock avoidance.
+/// @tparam WL Type of lock to use on raw mutexes.
+/// @tparam ...Args Types of given arguments.
+/// @param ...args Arbitrary number of Mustex and/or raw mutex.
+/// @return Optional tuple. Contains nothing if at least one argument could not be locked.
+///         Otherwise contains a Mustex::HandleMut for each given Mustex, and a lock for each raw mutex.
+template<template<class> class WL = detail::DefaultMustexWriteLock, typename... Args>
+auto try_lock_mut(Args &...args)
+#ifdef _MUSTEX_HAS_OPTIONAL
+    -> std::optional<std::tuple<decltype(detail::adopt_lock<WL>(args))...>>
+#else
+    -> std::unique_ptr<std::tuple<decltype(detail::adopt_lock<WL>(args))...>>
+#endif
+{
+    auto mutex_refs = std::tie(detail::get_mutex_ref(args)...);
+    if (!detail::try_lock_all(mutex_refs))
+        return {};
+    auto tuple = std::make_tuple(detail::adopt_lock<WL>(args)...);
+#ifdef _MUSTEX_HAS_OPTIONAL
+    return std::move(tuple);
+#else
+    return std::unique_ptr<std::tuple<decltype(detail::adopt_lock<WL>(args))...>>(new auto(std::move(tuple)));
+#endif
+}
 
 /// @brief Allow to access Mustex data, mutably or not depending on method used to construct.
 /// @tparam T Type of data to be accessed, potentially const-qualified.
@@ -221,8 +317,9 @@ public:
     Mustex &operator=(Mustex &&other)
         requires std::is_assignable<T &, T &&>::value
     {
-        WL<M> lock(m_mutex);
-        m_data = std::move(*other.lock_mut());
+        // WL<M> lock(m_mutex);
+        auto lock_and_handle = bcx::lock_mut<WL>(m_mutex, other);
+        m_data = std::move(*std::get<1>(lock_and_handle));
         return *this;
     }
 #else // #ifdef _MUSTEX_HAS_CONCEPTS
@@ -332,106 +429,6 @@ private:
     friend auto detail::adopt_lock(U &m) -> typename std::enable_if<detail::is_mustex<U>::value, typename U::HandleMut>::type;
     HandleMut lock_mut(std::adopt_lock_t) { return HandleMut(WL<M>(m_mutex, std::adopt_lock), &m_data); }
 };
-
-namespace detail
-{
-// C++11 does not provide std::index_sequence, implement it ourselves if necessary.
-#ifdef _MUSTEX_HAS_INT_SEQUENCE
-template<size_t... _Idx>
-using bcx_index_sequence = std::index_sequence<_Idx...>;
-template<size_t _Num>
-using bcx_make_index_sequence = std::make_index_sequence<_Num>;
-#else
-template<std::size_t... Indices>
-struct bcx_index_sequence
-{
-};
-
-template<std::size_t N, std::size_t... Indices>
-struct bcx_make_index_sequence_impl : bcx_make_index_sequence_impl<N - 1, N - 1, Indices...>
-{
-};
-
-template<std::size_t... Indices>
-struct bcx_make_index_sequence_impl<0, Indices...>
-{
-    typedef bcx_index_sequence<Indices...> type;
-};
-
-template<std::size_t N>
-using bcx_make_index_sequence = typename bcx_make_index_sequence_impl<N>::type;
-#endif
-
-template<typename Tuple, std::size_t... I>
-void lock_all_impl(Tuple &mutexes, bcx_index_sequence<I...>)
-{
-    std::lock(std::get<I>(mutexes)...);
-}
-
-template<typename Tuple>
-void lock_all(Tuple &mutexes)
-{
-    constexpr std::size_t N = std::tuple_size<Tuple>::value;
-    lock_all_impl(mutexes, bcx_make_index_sequence<N>{});
-}
-
-template<typename Tuple, std::size_t... I>
-bool try_lock_all_impl(Tuple &mutexes, bcx_index_sequence<I...>)
-{
-    // Yes -1 is the success code. https://en.cppreference.com/w/cpp/thread/try_lock
-    return std::try_lock(std::get<I>(mutexes)...) == -1;
-}
-
-/// @brief Try to lock all given mutexes.
-/// @return True for success.
-template<typename Tuple>
-bool try_lock_all(Tuple &mutexes)
-{
-    constexpr std::size_t N = std::tuple_size<Tuple>::value;
-    return try_lock_all_impl(mutexes, bcx_make_index_sequence<N>{});
-}
-
-} // namespace detail
-
-/// @brief Lock mutably any given @ref Mustex or raw mutex using deadlock avoidance.
-/// @tparam WL Type of lock to use on raw mutexes.
-/// @tparam ...Args Types of given arguments.
-/// @param ...args Arbitrary number of Mustex and/or raw mutex.
-/// @return Tuple containing a Mustex::HandleMut for each given Mustex, and a lock for each raw mutex.
-template<template<class> class WL = detail::DefaultMustexWriteLock, typename... Args>
-auto lock_mut(Args &...args)
-    -> std::tuple<decltype(detail::adopt_lock<WL>(args))...>
-{
-    auto mutex_refs = std::tie(detail::get_mutex_ref(args)...);
-    detail::lock_all(mutex_refs);
-    return std::make_tuple(detail::adopt_lock<WL>(args)...);
-}
-
-/// @brief Tries to lock mutably any given @ref Mustex or raw mutex using deadlock avoidance.
-/// @tparam WL Type of lock to use on raw mutexes.
-/// @tparam ...Args Types of given arguments.
-/// @param ...args Arbitrary number of Mustex and/or raw mutex.
-/// @return Optional tuple. Contains nothing if at least one argument could not be locked.
-///         Otherwise contains a Mustex::HandleMut for each given Mustex, and a lock for each raw mutex.
-template<template<class> class WL = detail::DefaultMustexWriteLock, typename... Args>
-auto try_lock_mut(Args &...args)
-#ifdef _MUSTEX_HAS_OPTIONAL
-    -> std::optional<std::tuple<decltype(detail::adopt_lock<WL>(args))...>>
-#else
-    -> std::unique_ptr<std::tuple<decltype(detail::adopt_lock<WL>(args))...>>
-#endif
-{
-    auto mutex_refs = std::tie(detail::get_mutex_ref(args)...);
-    if (!detail::try_lock_all(mutex_refs))
-        return {};
-    auto tuple = std::make_tuple(detail::adopt_lock<WL>(args)...);
-#ifdef _MUSTEX_HAS_OPTIONAL
-    return std::move(tuple);
-#else
-    return std::unique_ptr<std::tuple<decltype(detail::adopt_lock<WL>(args))...>>(new auto(std::move(tuple)));
-#endif
-}
-
 } // namespace bcx
 
 #endif // #ifndef BCX_MUSTEX_HPP
