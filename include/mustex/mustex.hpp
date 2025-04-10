@@ -238,16 +238,24 @@ public:
 
     virtual ~Mustex() = default;
 
+private:
 #ifdef _MUSTEX_HAS_OPTIONAL
-    std::optional<Handle> try_lock() const
+    std::optional<Handle> try_lock_impl() const
     {
         RL<M> lock(m_mutex, std::try_to_lock);
         if (lock.owns_lock())
             return Handle(std::move(lock), m_data);
         return {};
     }
+    std::optional<HandleMut> try_lock_mut_impl()
+    {
+        WL<M> lock(m_mutex, std::try_to_lock);
+        if (lock.owns_lock())
+            return HandleMut(std::move(lock), m_data);
+        return {};
+    }
 #else // #ifdef _MUSTEX_HAS_OPTIONAL
-    std::unique_ptr<Handle> try_lock() const
+    std::unique_ptr<Handle> try_lock_impl() const
     {
         RL<M> lock(m_mutex, std::try_to_lock);
         if (lock.owns_lock())
@@ -256,28 +264,7 @@ public:
             );
         return {};
     }
-#endif // #ifdef _MUSTEX_HAS_OPTIONAL
-
-    Handle lock() const
-    {
-        return Handle(RL<M>(m_mutex), m_data);
-    }
-
-    auto lock(std::try_to_lock_t) const -> decltype(std::declval<Mustex>().try_lock())
-    {
-        return try_lock();
-    }
-
-#ifdef _MUSTEX_HAS_OPTIONAL
-    std::optional<HandleMut> try_lock_mut()
-    {
-        WL<M> lock(m_mutex, std::try_to_lock);
-        if (lock.owns_lock())
-            return HandleMut(std::move(lock), m_data);
-        return {};
-    }
-#else // #ifdef _MUSTEX_HAS_OPTIONAL
-    std::unique_ptr<HandleMut> try_lock_mut()
+    std::unique_ptr<HandleMut> try_lock_mut_impl()
     {
         WL<M> lock(m_mutex, std::try_to_lock);
         if (lock.owns_lock())
@@ -287,15 +274,47 @@ public:
         return {};
     }
 #endif // #ifdef _MUSTEX_HAS_OPTIONAL
+public:
+    /// @brief Lock data for read-only access.
+    /// @return Handle on owned data.
+    Handle lock() const
+    {
+        return Handle(RL<M>(m_mutex), m_data);
+    }
 
+    /// @brief Try to lock data for read-only access.
+    /// @return Handle on owned data if available. Check before use.
+    auto try_lock() const -> decltype(std::declval<Mustex>().try_lock_impl())
+    {
+        return try_lock_impl();
+    }
+
+    /// @brief Try to lock data for read-only access.
+    /// @return Handle on owned data if available. Check before use.
+    auto lock(std::try_to_lock_t) const -> decltype(std::declval<Mustex>().try_lock_impl())
+    {
+        return try_lock_impl();
+    }
+
+    /// @brief Lock data for write access.
+    /// @return Handle on owned data.
     HandleMut lock_mut()
     {
         return HandleMut(WL<M>(m_mutex), m_data);
     }
 
-    auto lock_mut(std::try_to_lock_t) -> decltype(std::declval<Mustex>().try_lock_mut())
+    /// @brief Try to lock data for write access.
+    /// @return Handle on owned data if available. Check before use.
+    auto try_lock_mut() -> decltype(std::declval<Mustex>().try_lock_mut_impl())
     {
-        return try_lock_mut();
+        return try_lock_mut_impl();
+    }
+
+    /// @brief Try to lock data for write access.
+    /// @return Handle on owned data if available. Check before use.
+    auto lock_mut(std::try_to_lock_t) -> decltype(std::declval<Mustex>().try_lock_mut_impl())
+    {
+        return try_lock_mut_impl();
     }
 
 private:
