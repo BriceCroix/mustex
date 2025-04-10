@@ -263,7 +263,7 @@ TEST_CASE("Try lock", "[mustex]")
     REQUIRE_FALSE(opt_handle3);
 }
 
-TEST_CASE("Transfer handle ownership mutably", "[mustex]")
+TEST_CASE("Move handle mutably (construct)", "[mustex]")
 {
     Mustex<int> m(42);
 
@@ -273,7 +273,7 @@ TEST_CASE("Transfer handle ownership mutably", "[mustex]")
     REQUIRE(*handle2 == 42);
 }
 
-TEST_CASE("Transfer handle ownership", "[mustex]")
+TEST_CASE("Move handle (construct)", "[mustex]")
 {
     Mustex<int> m(42);
 
@@ -283,8 +283,39 @@ TEST_CASE("Transfer handle ownership", "[mustex]")
     REQUIRE(*handle2 == 42);
 }
 
+TEST_CASE("Move handle mutably (assign)", "[mustex]")
+{
+    Mustex<int> a(1);
+    Mustex<int> b(2);
+
+    {
+        auto ha = a.lock_mut();
+        auto hb = b.lock_mut();
+        hb = std::move(ha);
+        *hb = 3;
+    }
+
+    REQUIRE(*a.lock() == 3);
+    REQUIRE(*b.lock() == 2);
+}
+
+TEST_CASE("Move handle (assign)", "[mustex]")
+{
+    Mustex<int> a(1);
+    Mustex<int> b(2);
+
+    {
+        auto ha = a.lock();
+        auto hb = b.lock();
+        hb = std::move(ha);
+    }
+
+    REQUIRE(*a.lock() == 1);
+    REQUIRE(*b.lock() == 2);
+}
+
 #ifdef _MUSTEX_HAS_CONCEPTS
-TEST_CASE("Copy mustex unused", "[mustex]")
+TEST_CASE("Copy mustex unused (construct)", "[mustex]")
 {
     Mustex<int> m(42);
     decltype(m) m2(m);
@@ -295,7 +326,7 @@ TEST_CASE("Copy mustex unused", "[mustex]")
 #endif // #ifdef _MUSTEX_HAS_CONCEPTS
 
 #ifdef _MUSTEX_HAS_CONCEPTS
-TEST_CASE("Copy mustex used mutably", "[mustex]")
+TEST_CASE("Copy mustex used mutably (construct)", "[mustex]")
 {
     auto tic = std::chrono::high_resolution_clock::now();
 
@@ -324,7 +355,7 @@ TEST_CASE("Copy mustex used mutably", "[mustex]")
 #endif // #ifdef _MUSTEX_HAS_CONCEPTS
 
 #ifdef _MUSTEX_HAS_CONCEPTS
-TEST_CASE("Copy mustex used readonly", "[mustex]")
+TEST_CASE("Copy mustex used readonly (construct)", "[mustex]")
 {
     auto tic = std::chrono::high_resolution_clock::now();
 

@@ -137,25 +137,26 @@ public:
     {
         m_data = other.m_data;
         m_lock = std::move(other.m_lock);
+        return *this;
     }
 
     virtual ~MustexHandle() = default;
 
     T &operator*()
     {
-        return m_data;
+        return *m_data;
     }
 
     T *operator->()
     {
-        return &m_data;
+        return m_data;
     }
 
 private:
     L m_lock;
-    T &m_data;
+    T *m_data;
 
-    MustexHandle(L &&lock, T &data)
+    MustexHandle(L &&lock, T *data)
         : m_lock(std::move(lock))
         , m_data{data}
     {
@@ -215,12 +216,14 @@ public:
     {
         WL<M> lock(m_mutex);
         m_data = *other.lock();
+        return *this;
     }
     Mustex &operator=(Mustex &&other)
         requires std::is_assignable<T, T &&>::value
     {
         WL<M> lock(m_mutex);
         m_data = std::move(*other.lock_mut());
+        return *this;
     }
 #else // #ifdef _MUSTEX_HAS_CONCEPTS
     // Without c++20 these cannot be simply conditionally defined.
@@ -244,14 +247,14 @@ private:
     {
         RL<M> lock(m_mutex, std::try_to_lock);
         if (lock.owns_lock())
-            return Handle(std::move(lock), m_data);
+            return Handle(std::move(lock), &m_data);
         return {};
     }
     std::optional<HandleMut> try_lock_mut_impl()
     {
         WL<M> lock(m_mutex, std::try_to_lock);
         if (lock.owns_lock())
-            return HandleMut(std::move(lock), m_data);
+            return HandleMut(std::move(lock), &m_data);
         return {};
     }
 #else // #ifdef _MUSTEX_HAS_OPTIONAL
@@ -260,7 +263,7 @@ private:
         RL<M> lock(m_mutex, std::try_to_lock);
         if (lock.owns_lock())
             return std::unique_ptr<Handle>(
-                new Handle(std::move(lock), m_data)
+                new Handle(std::move(lock), &m_data)
             );
         return {};
     }
@@ -269,7 +272,7 @@ private:
         WL<M> lock(m_mutex, std::try_to_lock);
         if (lock.owns_lock())
             return std::unique_ptr<HandleMut>(
-                new HandleMut(std::move(lock), m_data)
+                new HandleMut(std::move(lock), &m_data)
             );
         return {};
     }
@@ -279,7 +282,7 @@ public:
     /// @return Handle on owned data.
     Handle lock() const
     {
-        return Handle(RL<M>(m_mutex), m_data);
+        return Handle(RL<M>(m_mutex), &m_data);
     }
 
     /// @brief Try to lock data for read-only access.
@@ -300,7 +303,7 @@ public:
     /// @return Handle on owned data.
     HandleMut lock_mut()
     {
-        return HandleMut(WL<M>(m_mutex), m_data);
+        return HandleMut(WL<M>(m_mutex), &m_data);
     }
 
     /// @brief Try to lock data for write access.
@@ -326,7 +329,7 @@ private:
     friend auto detail::get_mutex_ref(U &m) -> typename std::enable_if<detail::is_mustex<U>::value, typename U::mutex_t &>::type;
     template<template<class> class _WL, typename U>
     friend auto detail::adopt_lock(U &m) -> typename std::enable_if<detail::is_mustex<U>::value, typename U::HandleMut>::type;
-    HandleMut lock_mut(std::adopt_lock_t) { return HandleMut(WL<M>(m_mutex, std::adopt_lock), m_data); }
+    HandleMut lock_mut(std::adopt_lock_t) { return HandleMut(WL<M>(m_mutex, std::adopt_lock), &m_data); }
 };
 
 namespace detail
