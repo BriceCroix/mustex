@@ -8,6 +8,7 @@ option(MUSTEX_BUILD_TESTS  "Enable build of unit tests." OFF)
 option(MUSTEX_TESTS_CXX_20 "Use c++ standard 20 and above for tests." ON)
 option(MUSTEX_TESTS_CXX_17 "Use c++ standard 17 for tests." OFF)
 option(MUSTEX_TESTS_CXX_14 "Use c++ standard 14 for tests." OFF)
+option(MUSTEX_TESTS_SANITIZE "Sanitize test threads and undefined behaviors (Linux)." ON)
 
 add_library(${BCX_MUSTEX_TARGET_NAME} INTERFACE)
 target_include_directories(${BCX_MUSTEX_TARGET_NAME} INTERFACE include)
@@ -48,6 +49,13 @@ if(MUSTEX_BUILD_TESTS)
         target_compile_options(${TESTS_TARGET} PRIVATE /W4 /WX)
     else()
         target_compile_options(${TESTS_TARGET} PRIVATE -Wall -Wextra -Wpedantic -Werror)
+    endif()
+
+    if(UNIX AND MUSTEX_TESTS_SANITIZE)
+        target_compile_options(${TESTS_TARGET} PUBLIC -fsanitize=thread -fsanitize=undefined)
+        target_link_options(${TESTS_TARGET} PUBLIC -fsanitize=thread -fsanitize=undefined)
+
+        # tsan will require the following command on kernels 6.6 (ubuntu 24) : sudo sysctl vm.mmap_rnd_bits=30
     endif()
 
     find_package(Threads REQUIRED)
