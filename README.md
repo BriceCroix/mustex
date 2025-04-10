@@ -12,6 +12,7 @@ and tries to mimic its functionalities.
 ## Features
 
 - Data-owning mutex type `Mustex<T>` preventing from *forgetting* to lock data.
+- Scoped-based synchronization thanks to `MustexHandle<T>`.
 - One writer at a time with `lock_mut()`, `try_lock_mut()`
 
 ```cpp
@@ -55,6 +56,49 @@ std::mutex m;
     auto [handle1, handle2, lock] = bcx::lock_mut(shared1, shared2, m);
     // ...
 }
+```
+
+## Motivations
+
+Much too often are there code-bases with variable(s) protected by a mutex with only its name to
+indicate that it must be locked to do *some* things. But in a class like this :
+
+```cpp
+class VeryBigClass
+{
+    /* some members and methods here */
+
+    std::string m_name;
+    std::mutex m_mutex;
+    std::string m_code;
+}
+```
+
+What is protecting `m_mutex` ? `m_name` ? `m_code` ? Both ?
+As a developer that has to add a method to this class and want to read one or both of these
+variables, what prevents you to access them without locking `m_mutex`, effectively creating a race
+condition ? `Mustex` addresses this issue by making it *impossible* to access the data without
+locking its protecting mutex.
+
+## Design choices
+
+The main reason for every design choice of this library is the following : *If you have a handle on
+a Mustex, you are free to do anything with the data*. The thread that called `lock()` may be blocked
+for a certain time, but when a handle is returned, access is granted until the destruction of the
+handle.
+
+So at the question *Why is there no `unlock()`/`lock()` ?* on the handle class, the answer is that
+having these two method would require either to make it possible for the user to access data in an
+unlocked state, or to always return an `optional` when accessing data, which would be quite a burden.
+
+The only exception to that is when `std::move`ing instances, the old instance now not owning any
+lock on the data anymore, but still being able to access it :
+
+```cpp
+bcx::Mustex<int> data(42);
+auto handle = data.lock();
+decltype(handle) handle2(std::move(handle));
+int very_dangerous = *handle; // WARNING : NEVER USE A MOVED HANDLE.
 ```
 
 ## Common pitfalls
@@ -235,11 +279,20 @@ int main(int argc, char* argv[])
 
 ## Supported OS and compilers
 
-|       |        Linux       |         Windows         |
-|-------|:------------------:|:-----------------------:|
+|       |       Linux        |         Windows         |
+| ----- | :----------------: | :---------------------: |
 | gcc   | :heavy_check_mark: | (i.e. mingw) Not tested |
-| msvc  |         NA         |    :heavy_check_mark:   |
-| clang | :heavy_check_mark: |    :heavy_check_mark:   |
+| msvc  |         NA         |   :heavy_check_mark:    |
+| clang | :heavy_check_mark: |   :heavy_check_mark:    |
+
+## C++ standards differences
+
+|                      |                            C++11                            |       C++14        |       C++17        |       C++20        |
+| -------------------- | :---------------------------------------------------------: | :----------------: | :----------------: | :----------------: |
+| Thread safety        |                     :heavy_check_mark:                      | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: |
+| Simultaneous readers | :x: [But...](#enable-simultaneous-multiple-readers-for-c11) | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: |
+| Optional return type |                      `std::unique_ptr`                      | `std::unique_ptr`  |  `std::optional`   |  `std::optional`   |
+| Copy/Move Mustex     |                             :x:                             |        :x:         |        :x:         | :heavy_check_mark: |
 
 ## Building tests
 
