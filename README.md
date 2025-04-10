@@ -29,7 +29,6 @@ bcx::Mustex<float> mustex(42.0f);
 bcx::Mustex<std::string> name("Batman");
 auto handle = name.lock();
 auto future = std::async(
-    std::launch::async, 
     [&name]
     {
         auto handle = name.lock();
@@ -99,7 +98,6 @@ int main(int argc, char *argv[])
     std::atomic<bool> running(true);
 
     auto producer = std::async(
-        std::launch::async,
         [&running, value]
         {
             while (running)
@@ -119,7 +117,6 @@ int main(int argc, char *argv[])
     );
 
     auto consumer1 = std::async(
-        std::launch::async,
         [&running, value]
         {
             while (running)
@@ -138,7 +135,6 @@ int main(int argc, char *argv[])
     );
 
     auto consumer2 = std::async(
-        std::launch::async,
         [&running, value]
         {
             std::ofstream file("myfile.txt");
@@ -230,7 +226,7 @@ int main(int argc, char* argv[])
 {
     MyMustex<int> value(42);
     auto handle = value.lock();
-    auto future = std::async(std::launch::async, [&value]{ auto handle = value.lock(); });
+    auto future = std::async([&value]{ auto handle = value.lock(); });
     future.wait();
     // Yay that does not deadlock !
 }

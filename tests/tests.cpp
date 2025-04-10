@@ -74,7 +74,6 @@ TEST_CASE("Lock mustex readonly without deadlock", "[mustex]")
     bcx::Mustex<std::string> name("Batman");
     auto handle = name.lock();
     auto future = std::async(
-        std::launch::async,
         [&name]
         {
             auto handle = name.lock();
@@ -95,7 +94,6 @@ TEST_CASE("Lock mustex readonly twice", "[mustex]")
     auto tic = std::chrono::high_resolution_clock::now();
 
     auto future = std::async(
-        std::launch::async,
         [&m]
         {
             auto handle = m.lock();
@@ -105,7 +103,6 @@ TEST_CASE("Lock mustex readonly twice", "[mustex]")
     );
 
     auto future2 = std::async(
-        std::launch::async,
         [&m]
         {
             auto handle = m.lock();
@@ -132,7 +129,6 @@ TEST_CASE("Lock mustex mutably while locked readonly", "[mustex]")
 
     std::atomic<bool> started{false};
     auto future = std::async(
-        std::launch::async,
         [&m, &started]
         {
             auto handle = m.lock();
@@ -146,7 +142,6 @@ TEST_CASE("Lock mustex mutably while locked readonly", "[mustex]")
         ;
 
     auto future2 = std::async(
-        std::launch::async,
         [&m]
         {
             auto handle = m.lock_mut();
@@ -169,7 +164,6 @@ TEST_CASE("Lock mustex readonly while locked mutably", "[mustex]")
 
     std::atomic<bool> started{false};
     auto future = std::async(
-        std::launch::async,
         [&m, &started]
         {
             auto handle = m.lock_mut();
@@ -184,7 +178,6 @@ TEST_CASE("Lock mustex readonly while locked mutably", "[mustex]")
         ;
 
     auto future2 = std::async(
-        std::launch::async,
         [&m]
         {
             auto handle = m.lock();
@@ -207,7 +200,6 @@ TEST_CASE("Lock mustex mutably while locked mutably", "[mustex]")
 
     std::atomic<bool> started{false};
     auto future = std::async(
-        std::launch::async,
         [&m, &started]
         {
             auto handle = m.lock_mut();
@@ -222,7 +214,6 @@ TEST_CASE("Lock mustex mutably while locked mutably", "[mustex]")
         ;
 
     auto future2 = std::async(
-        std::launch::async,
         [&m]
         {
             auto handle = m.lock_mut();
@@ -312,7 +303,6 @@ TEST_CASE("Copy mustex used mutably", "[mustex]")
 
     std::atomic<bool> started{false};
     auto future = std::async(
-        std::launch::async,
         [&m, &started]
         {
             auto handle = m.lock_mut();
@@ -342,7 +332,6 @@ TEST_CASE("Copy mustex used readonly", "[mustex]")
 
     std::atomic<bool> started{false};
     auto future = std::async(
-        std::launch::async,
         [&m, &started]
         {
             auto handle = m.lock();
@@ -398,7 +387,6 @@ TEST_CASE("Synchronous lock used by mustex", "[mustex]")
 
     std::atomic<bool> started{false};
     auto future = std::async(
-        std::launch::async,
         [&shared1, &started]
         {
             auto handle = shared1.lock();
@@ -426,7 +414,6 @@ TEST_CASE("Synchronous lock used by mutex", "[mustex]")
 
     std::atomic<bool> started{false};
     auto future = std::async(
-        std::launch::async,
         [&m, &started]
         {
             std::lock_guard<decltype(m)> lock(m);
@@ -475,7 +462,6 @@ TEST_CASE("Synchronous try lock", "[mustex]")
         // Now try lock while a mustex handle exists.
         std::atomic<bool> started{false};
         auto future = std::async(
-            std::launch::async,
             [&shared1, &started]
             {
                 auto handle1 = shared1.lock();
@@ -494,7 +480,6 @@ TEST_CASE("Synchronous try lock", "[mustex]")
         // Now try lock while a mutex lock_guard exists.
         std::atomic<bool> started{false};
         auto future = std::async(
-            std::launch::async,
             [&m, &started]
             {
                 std::lock_guard<decltype(m)> lock(m);
