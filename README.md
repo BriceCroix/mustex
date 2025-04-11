@@ -106,6 +106,72 @@ int very_dangerous = *handle; // WARNING : NEVER USE A MOVED HANDLE.
 - Locking twice the same `Mustex` on the same thread in the same scope.
   - In mutable mode (`lock_mut()`) : will cause a deadlock.
   - In read-only mode (`lock()`) : is undefined behavior.
+- Keeping a reference to the underlying data that outlives the lifetime of the handle.
+
+```cpp
+Mustex<SomeClass> data();
+// ... Send reference to other threads
+SomeClass *ref;
+{
+    auto handle = data.lock_mut();
+    ref = &(*handle);
+    ref->do_things();
+}
+ref->do_things(); // WARNING This call is undefined behavior (handle is dropped).
+```
+
+- Locking two instances mutably and sequentially in same scope and in different orders in two (or more) threads.
+The following code can (and eventually will) cause a deadlock.
+
+```cpp
+bcx::Mustex<SomeClass> m1;
+bcx::Mustex<Whatever> m2;
+std::launch(
+    [&m1, &m2]
+    {
+        auto handle1 = m1.lock();
+        // Do things with handle1...
+        auto handle2 = m2.lock_mut();
+        // Do things with handle2... If has not already deadlocked...
+    }
+);
+std::launch(
+    [&m1, &m2]
+    {
+        auto handle2 = m2.lock();
+        // Do things with handle2...
+        auto handle1 = m1.lock_mut();
+        // Do things with handle1... If has not already deadlocked...
+    }
+);
+```
+
+Avoid any risk of deadlock with provided `bcx::lock_mut` deadlock-free method :
+
+```cpp
+bcx::Mustex<SomeClass> m1;
+bcx::Mustex<Whatever> m2;
+std::launch(
+    [&m1, &m2]
+    {
+        auto [handle1, handle2] = bcx::lock_mut(m1, m2);
+        // Do things with handle1...
+        // Then do things with handle2.
+    }
+);
+std::launch(
+    [&m1, &m2]
+    {
+        auto [handle2, handle1] = bcx::lock_mut(m2, m1);
+        // Do things with handle2...
+        // Then with handle1.
+    }
+);
+```
+
+Or even better, if it is not necessary to have handles on both data at the same time, scope the
+lifetime of the handles in order not to have them living simultaneously.
+
 
 ## More realistic example
 
