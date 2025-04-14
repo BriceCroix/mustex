@@ -50,31 +50,102 @@ namespace bcx
 {
 
 // Forward declares
-template<typename T, class M, template<class> class RL, template<class> class WL>
+template<typename T, class M>
 class Mustex;
 
 namespace detail
 {
 #ifdef _MUSTEX_HAS_SHARED_MUTEX
-template<class M>
-using DefaultMustexReadLock = std::shared_lock<M>;
 using DefaultMustexMutex = std::shared_timed_mutex;
 #else // #ifdef _MUSTEX_HAS_SHARED_MUTEX
-template<class M>
-using DefaultMustexReadLock = std::unique_lock<M>;
+
 using DefaultMustexMutex = std::mutex;
 #endif // #ifdef _MUSTEX_HAS_SHARED_MUTEX
 
+/// @brief Concept class whose member `value` indicates if a mutex is SharedLockable.
+/// https://en.cppreference.com/w/cpp/named_req/SharedLockable
+/// @tparam T Type of mutex to check.
+template<typename T>
+class is_shared_lockable
+{
+private:
+    template<typename U>
+    static auto test(int) -> decltype(std::declval<U>().lock_shared(), // must be valid
+                                      std::is_same<decltype(std::declval<U>().try_lock_shared()), bool>{}, // must return bool
+                                      std::declval<U>().unlock_shared(), // must be valid
+                                      std::true_type{});
+
+    template<typename>
+    static std::false_type test(...);
+
+public:
+    static constexpr bool value = decltype(test<T>(0))::value;
+};
+
+/// @brief Wrapper class around any mutex to redirect read/write lock accesses to shared lock,
+/// depending on whether or not the mutex is shared lockable.
+/// @tparam M
 template<class M>
-using DefaultMustexWriteLock = std::unique_lock<M>;
+class ProxyMutex : public M
+{
+public:
+    ProxyMutex()
+        : M() {}
+
+    template<typename U = M>
+    inline typename std::enable_if<is_shared_lockable<U>::value && std::is_same<U, M>::value, void>::type lock_read()
+    {
+        M::lock_shared();
+    }
+    template<typename U = M>
+    inline typename std::enable_if<!is_shared_lockable<U>::value && std::is_same<U, M>::value, void>::type lock_read()
+    {
+        M::lock();
+    }
+    inline void lock_write()
+    {
+        M::lock();
+    }
+
+    template<typename U = M>
+    inline typename std::enable_if<is_shared_lockable<U>::value && std::is_same<U, M>::value, bool>::type try_lock_read()
+    {
+        return M::try_lock_shared();
+    }
+    template<typename U = M>
+    inline typename std::enable_if<!is_shared_lockable<U>::value && std::is_same<U, M>::value, bool>::type
+        try_lock_read()
+    {
+        return M::try_lock();
+    }
+    inline bool try_lock_write()
+    {
+        return M::try_lock();
+    }
+
+    template<typename U = M>
+    inline typename std::enable_if<is_shared_lockable<U>::value && std::is_same<U, M>::value, void>::type unlock_read()
+    {
+        M::unlock_shared();
+    }
+    template<typename U = M>
+    inline typename std::enable_if<!is_shared_lockable<U>::value && std::is_same<U, M>::value, void>::type unlock_read()
+    {
+        M::unlock();
+    }
+    inline void unlock_write()
+    {
+        M::unlock();
+    }
+};
 
 template<typename U>
 struct is_mustex : std::false_type
 {
 };
 
-template<typename T, class M, template<class> class RL, template<class> class WL>
-struct is_mustex<Mustex<T, M, RL, WL>> : std::true_type
+template<typename T, class M>
+struct is_mustex<Mustex<T, M>> : std::true_type
 {
 };
 
@@ -93,14 +164,14 @@ auto get_mutex_ref(U &m) -> typename std::enable_if<is_mustex<U>::value, typenam
 }
 
 /// @brief Acquire lock (adopt) for a raw mutex.
-template<template<class> class WL, typename T>
-auto adopt_lock(T &m) -> typename std::enable_if<!is_mustex<T>::value, DefaultMustexWriteLock<T>>::type
+template<template<class> class L, typename T>
+auto adopt_lock(T &m) -> typename std::enable_if<!is_mustex<T>::value, L<T>>::type
 {
-    return WL<T>(m, std::adopt_lock);
+    return L<T>(m, std::adopt_lock);
 }
 
 /// @brief Acquire lock (adopt) for Mustex.
-template<template<class> class WL, typename T>
+template<template<class> class L, typename T>
 auto adopt_lock(T &m) -> typename std::enable_if<is_mustex<T>::value, typename T::HandleMut>::type
 {
     return m.lock_mut(std::adopt_lock);
@@ -162,67 +233,80 @@ bool try_lock_all(Tuple &mutexes)
     return try_lock_all_impl(mutexes, bcx_make_index_sequence<N>{});
 }
 
-template<template<class> class WL, typename... Args>
-auto lock_mut_impl(Args &...args) -> std::tuple<decltype(detail::adopt_lock<WL>(args))...>
+template<template<class> class L, typename... Args>
+auto lock_mut_impl(Args &...args) -> std::tuple<decltype(detail::adopt_lock<L>(args))...>
 {
     auto mutex_refs = std::tie(detail::get_mutex_ref(args)...);
     detail::lock_all(mutex_refs);
-    return std::make_tuple(detail::adopt_lock<WL>(args)...);
+    return std::make_tuple(detail::adopt_lock<L>(args)...);
 }
 
-template<template<class> class WL, typename... Args>
+template<template<class> class L, typename... Args>
 auto try_lock_mut_impl(Args &...args)
 #ifdef _MUSTEX_HAS_OPTIONAL
-    -> std::optional<std::tuple<decltype(detail::adopt_lock<WL>(args))...>>
+    -> std::optional<std::tuple<decltype(detail::adopt_lock<L>(args))...>>
 #else
-    -> std::unique_ptr<std::tuple<decltype(detail::adopt_lock<WL>(args))...>>
+    -> std::unique_ptr<std::tuple<decltype(detail::adopt_lock<L>(args))...>>
 #endif
 {
     auto mutex_refs = std::tie(detail::get_mutex_ref(args)...);
     if (!detail::try_lock_all(mutex_refs))
         return {};
-    auto tuple = std::make_tuple(detail::adopt_lock<WL>(args)...);
+    auto tuple = std::make_tuple(detail::adopt_lock<L>(args)...);
 #ifdef _MUSTEX_HAS_OPTIONAL
     return std::move(tuple);
 #else
-    return std::unique_ptr<std::tuple<decltype(detail::adopt_lock<WL>(args))...>>(new auto(std::move(tuple)));
+    return std::unique_ptr<std::tuple<decltype(detail::adopt_lock<L>(args))...>>(
+        new std::tuple<decltype(detail::adopt_lock<L>(args))...>(std::move(tuple))
+    );
 #endif
 }
 
 } // namespace detail
 
 /// @brief Lock mutably any given Mustex or raw mutex using deadlock avoidance.
-/// @tparam WL Type of lock to use on raw mutexes.
+/// @tparam L Type of lock to use on raw mutexes.
 /// @tparam ...Args Types of given arguments.
 /// @param ...args Arbitrary number of Mustex and/or raw mutex.
 /// @return Tuple containing a Mustex::HandleMut for each given Mustex, and a lock for each raw mutex.
-template<template<class> class WL = detail::DefaultMustexWriteLock, typename... Args>
-auto lock_mut(Args &...args) -> decltype(detail::lock_mut_impl<WL>(args...))
+template<template<class> class L = std::unique_lock, typename... Args>
+inline auto lock_mut(Args &...args) -> decltype(detail::lock_mut_impl<L>(args...))
 {
-    return detail::lock_mut_impl<WL>(args...);
+    return detail::lock_mut_impl<L>(args...);
 }
 
 /// @brief Tries to lock mutably any given Mustex or raw mutex using deadlock avoidance.
-/// @tparam WL Type of lock to use on raw mutexes.
+/// @tparam L Type of lock to use on raw mutexes.
 /// @tparam ...Args Types of given arguments.
 /// @param ...args Arbitrary number of Mustex and/or raw mutex.
 /// @return Optional tuple. Contains nothing if at least one argument could not be locked.
 ///         Otherwise contains a Mustex::HandleMut for each given Mustex, and a lock for each raw mutex.
-template<template<class> class WL = detail::DefaultMustexWriteLock, typename... Args>
-auto try_lock_mut(Args &...args) -> decltype(detail::try_lock_mut_impl<WL>(args...))
+template<template<class> class L = std::unique_lock, typename... Args>
+inline auto try_lock_mut(Args &...args) -> decltype(detail::try_lock_mut_impl<L>(args...))
 {
-    return detail::try_lock_mut_impl<WL>(args...);
+    return detail::try_lock_mut_impl<L>(args...);
 }
 
 /// @brief Allow to access Mustex data, mutably or not depending on method used to construct.
 /// @tparam T Type of data to be accessed, potentially const-qualified.
-/// @tparam L Type of lock owned by this class.
-template<typename T, class L>
+/// @tparam M Type of mutex owned by this class.
+template<typename T, class M>
 class MustexHandle
 {
+private:
+    void unlock()
+    {
+        if (!m_mutex)
+            return;
+        if (std::is_const<T>::value)
+            m_mutex->unlock_read();
+        else
+            m_mutex->unlock_write();
+    }
+
 public:
     // Only parent Mustex can instantiate this class.
-    template<class MT, class MM, template<class> class MRL, template<class> class MWL>
+    template<class MT, class MM>
     friend class Mustex;
 
     /// @brief The type of contained value, exposed for convenience.
@@ -231,20 +315,28 @@ public:
     MustexHandle() = delete;
     MustexHandle(const MustexHandle &) = delete;
     MustexHandle(MustexHandle &&other)
-        : m_lock{std::move(other.m_lock)}
+        : m_mutex{other.m_mutex}
         , m_data{other.m_data}
     {
+        other.m_mutex = nullptr;
+        other.m_data = nullptr;
     }
 
     MustexHandle &operator=(const MustexHandle &other) = delete;
     MustexHandle &operator=(MustexHandle &&other)
     {
+        unlock();
         m_data = other.m_data;
-        m_lock = std::move(other.m_lock);
+        other.m_data = nullptr;
+        m_mutex = other.m_mutex;
+        other.m_mutex = nullptr;
         return *this;
     }
 
-    virtual ~MustexHandle() = default;
+    virtual ~MustexHandle()
+    {
+        unlock();
+    }
 
     T &operator*()
     {
@@ -257,11 +349,14 @@ public:
     }
 
 private:
-    L m_lock;
+    detail::ProxyMutex<M> *m_mutex;
     T *m_data;
 
-    MustexHandle(L &&lock, T *data)
-        : m_lock(std::move(lock))
+    /// @brief Create handle on ALREADY ACQUIRED mutex.
+    /// @param mutex
+    /// @param data
+    MustexHandle(detail::ProxyMutex<M> *mutex, T *data)
+        : m_mutex{mutex}
         , m_data{data}
     {
     }
@@ -271,13 +366,7 @@ private:
 /// without thread synchronization.
 /// @tparam T The type of data to be shared among threads.
 /// @tparam M Type of synchronization mutex.
-/// @tparam RL Type of lock used for read-accesses.
-/// @tparam WL Type of lock used for write-accesses.
-template<
-    class T,
-    class M = detail::DefaultMustexMutex,
-    template<class> class RL = detail::DefaultMustexReadLock,
-    template<class> class WL = detail::DefaultMustexWriteLock>
+template<class T, class M = detail::DefaultMustexMutex>
 class Mustex
 {
 public:
@@ -286,9 +375,9 @@ public:
     /// @brief The type of mutex used, exposed for convenience.
     using mutex_t = M;
     /// @brief The type of handle used to access data.
-    using Handle = MustexHandle<const data_t, RL<M>>;
+    using Handle = MustexHandle<const data_t, M>;
     /// @brief The type of handle used to access data mutably.
-    using HandleMut = MustexHandle<data_t, WL<M>>;
+    using HandleMut = MustexHandle<data_t, M>;
 
     template<typename... Args>
 #ifdef _MUSTEX_HAS_CONCEPTS
@@ -318,15 +407,14 @@ public:
     Mustex &operator=(const Mustex &other)
         requires std::is_assignable<T &, const T &>::value
     {
-        WL<M> lock(m_mutex);
+        std::lock_guard<M> lock(m_mutex);
         m_data = *other.lock();
         return *this;
     }
     Mustex &operator=(Mustex &&other)
         requires std::is_assignable<T &, T &&>::value
     {
-        // WL<M> lock(m_mutex);
-        auto lock_and_handle = bcx::lock_mut<WL>(m_mutex, other);
+        auto lock_and_handle = bcx::lock_mut(m_mutex, other);
         m_data = std::move(*std::get<1>(lock_and_handle));
         return *this;
     }
@@ -351,34 +439,30 @@ private:
 #ifdef _MUSTEX_HAS_OPTIONAL
     std::optional<Handle> try_lock_impl() const
     {
-        RL<M> lock(m_mutex, std::try_to_lock);
-        if (lock.owns_lock())
-            return Handle(std::move(lock), &m_data);
+        if (m_mutex.try_lock_read())
+            return Handle(&m_mutex, &m_data);
         return {};
     }
     std::optional<HandleMut> try_lock_mut_impl()
     {
-        WL<M> lock(m_mutex, std::try_to_lock);
-        if (lock.owns_lock())
-            return HandleMut(std::move(lock), &m_data);
+        if (m_mutex.try_lock_write())
+            return HandleMut(&m_mutex, &m_data);
         return {};
     }
 #else // #ifdef _MUSTEX_HAS_OPTIONAL
     std::unique_ptr<Handle> try_lock_impl() const
     {
-        RL<M> lock(m_mutex, std::try_to_lock);
-        if (lock.owns_lock())
+        if (m_mutex.try_lock_read())
             return std::unique_ptr<Handle>(
-                new Handle(std::move(lock), &m_data)
+                new Handle(&m_mutex, &m_data)
             );
         return {};
     }
     std::unique_ptr<HandleMut> try_lock_mut_impl()
     {
-        WL<M> lock(m_mutex, std::try_to_lock);
-        if (lock.owns_lock())
+        if (m_mutex.try_lock_write())
             return std::unique_ptr<HandleMut>(
-                new HandleMut(std::move(lock), &m_data)
+                new HandleMut(&m_mutex, &m_data)
             );
         return {};
     }
@@ -388,7 +472,8 @@ public:
     /// @return Handle on owned data.
     Handle lock() const
     {
-        return Handle(RL<M>(m_mutex), &m_data);
+        m_mutex.lock_read();
+        return Handle(&m_mutex, &m_data);
     }
 
     /// @brief Try to lock data for read-only access.
@@ -409,7 +494,8 @@ public:
     /// @return Handle on owned data.
     HandleMut lock_mut()
     {
-        return HandleMut(WL<M>(m_mutex), &m_data);
+        m_mutex.lock_write();
+        return HandleMut(&m_mutex, &m_data);
     }
 
     /// @brief Try to lock data for write access.
@@ -428,14 +514,14 @@ public:
 
 private:
     T m_data;
-    mutable M m_mutex;
+    mutable detail::ProxyMutex<M> m_mutex;
 
     // These are necessary in order for bcx::lock_mut to work.
     template<typename U>
     friend auto detail::get_mutex_ref(U &m) -> typename std::enable_if<detail::is_mustex<U>::value, typename U::mutex_t &>::type;
     template<template<class> class _WL, typename U>
     friend auto detail::adopt_lock(U &m) -> typename std::enable_if<detail::is_mustex<U>::value, typename U::HandleMut>::type;
-    HandleMut lock_mut(std::adopt_lock_t) { return HandleMut(WL<M>(m_mutex, std::adopt_lock), &m_data); }
+    HandleMut lock_mut(std::adopt_lock_t) { return HandleMut(&m_mutex, &m_data); }
 };
 } // namespace bcx
 
