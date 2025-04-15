@@ -12,6 +12,27 @@
 
 using namespace bcx;
 
+class BasicLockable
+{
+public:
+    void lock() { m.lock(); }
+    void unlock() { m.unlock(); }
+
+private:
+    std::mutex m;
+};
+
+class Lockable
+{
+public:
+    void lock() { m.lock(); }
+    bool try_lock() { return m.try_lock(); }
+    void unlock() { m.unlock(); }
+
+private:
+    std::mutex m;
+};
+
 class MyClass
 {
 public:
@@ -753,5 +774,27 @@ TEST_CASE("Synchronous try lock", "[mustex]")
         auto locks = try_lock_mut(shared1, shared2, m);
         REQUIRE_FALSE(locks);
         future.wait();
+    }
+}
+
+TEST_CASE("Mustex with BasicLockable only", "[mustex]")
+{
+    Mustex<float, BasicLockable> m(2.f);
+
+    auto handle = m.lock();
+    REQUIRE(*handle == 2.f);
+}
+
+TEST_CASE("Mustex with Lockable only", "[mustex]")
+{
+    Mustex<float, Lockable> m(2.f);
+
+    {
+        auto handle = m.lock();
+        REQUIRE(*handle == 2.f);
+    }
+    {
+        auto handle = m.try_lock();
+        REQUIRE(handle);
     }
 }
