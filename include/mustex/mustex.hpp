@@ -87,16 +87,14 @@ class is_lockable
 {
 private:
     template<typename U>
-    static auto test(int) -> decltype(std::declval<U>().lock(), // must be valid
-                                      std::is_same<decltype(std::declval<U>().try_lock()), bool>{}, // must return bool
-                                      std::declval<U>().unlock(), // must be valid
+    static auto test(int) -> decltype(std::is_same<decltype(std::declval<U>().try_lock()), bool>{}, // must return bool
                                       std::true_type{});
 
     template<typename>
     static std::false_type test(...);
 
 public:
-    static constexpr bool value = decltype(test<T>(0))::value;
+    static constexpr bool value = decltype(test<T>(0))::value && is_basic_lockable<T>::value;
 };
 
 /// @brief Concept class whose member `value` indicates if a mutex is BasicSharedLockable.
@@ -126,16 +124,14 @@ class is_shared_lockable
 {
 private:
     template<typename U>
-    static auto test(int) -> decltype(std::declval<U>().lock_shared(), // must be valid
-                                      std::is_same<decltype(std::declval<U>().try_lock_shared()), bool>{}, // must return bool
-                                      std::declval<U>().unlock_shared(), // must be valid
+    static auto test(int) -> decltype(std::is_same<decltype(std::declval<U>().try_lock_shared()), bool>{}, // must return bool
                                       std::true_type{});
 
     template<typename>
     static std::false_type test(...);
 
 public:
-    static constexpr bool value = decltype(test<T>(0))::value;
+    static constexpr bool value = decltype(test<T>(0))::value && is_basic_shared_lockable<T>::value;
 };
 
 /// @brief Methods to redirect read/write lock accesses to mutex,
