@@ -143,50 +143,58 @@ public:
 namespace proxy_mutex
 {
 template<typename M>
-inline typename std::enable_if<is_shared_lockable<M>::value, void>::type lock_read(M &m)
+inline typename std::enable_if<is_basic_shared_lockable<M>::value, void>::type
+    lock_read(M &m)
 {
     m.lock_shared();
 }
 template<typename M>
-inline typename std::enable_if<!is_shared_lockable<M>::value, void>::type lock_read(M &m)
+inline typename std::enable_if<!is_basic_shared_lockable<M>::value && is_basic_lockable<M>::value, void>::type
+    lock_read(M &m)
 {
     m.lock();
 }
 template<typename M>
-inline void lock_write(M &m)
+inline typename std::enable_if<is_basic_lockable<M>::value, void>::type
+    lock_write(M &m)
 {
     m.lock();
 }
 
 template<typename M>
-inline typename std::enable_if<is_shared_lockable<M>::value, bool>::type try_lock_read(M &m)
+inline typename std::enable_if<is_shared_lockable<M>::value, bool>::type
+    try_lock_read(M &m)
 {
     return m.try_lock_shared();
 }
 template<typename M>
-inline typename std::enable_if<!is_shared_lockable<M>::value, bool>::type
+inline typename std::enable_if<!is_shared_lockable<M>::value && is_lockable<M>::value, bool>::type
     try_lock_read(M &m)
 {
     return m.try_lock();
 }
 template<typename M>
-inline bool try_lock_write(M &m)
+inline typename std::enable_if<is_lockable<M>::value, bool>::type
+    try_lock_write(M &m)
 {
     return m.try_lock();
 }
 
 template<typename M>
-inline typename std::enable_if<is_shared_lockable<M>::value, void>::type unlock_read(M &m)
+inline typename std::enable_if<is_basic_shared_lockable<M>::value, void>::type
+    unlock_read(M &m)
 {
     m.unlock_shared();
 }
 template<typename M>
-inline typename std::enable_if<!is_shared_lockable<M>::value, void>::type unlock_read(M &m)
+inline typename std::enable_if<!is_basic_shared_lockable<M>::value && is_basic_lockable<M>::value, void>::type
+    unlock_read(M &m)
 {
     m.unlock();
 }
 template<typename M>
-inline void unlock_write(M &m)
+inline typename std::enable_if<is_basic_lockable<M>::value, void>::type
+    unlock_write(M &m)
 {
     m.unlock();
 }
@@ -489,6 +497,12 @@ public:
     virtual ~Mustex() = default;
 
 private:
+    template<
+        class _M = M,
+        typename = typename std::enable_if<
+            (detail::is_lockable<_M>::value ||
+             detail::is_shared_lockable<_M>::value) &&
+            std::is_same<_M, M>::value>::type>
 #ifdef _MUSTEX_HAS_OPTIONAL
     std::optional<Handle>
 #else
@@ -504,6 +518,11 @@ private:
 #endif
         return {};
     }
+    template<
+        class _M = M,
+        typename = typename std::enable_if<
+            detail::is_lockable<_M>::value &&
+            std::is_same<_M, M>::value>::type>
 #ifdef _MUSTEX_HAS_OPTIONAL
     std::optional<HandleMut>
 #else
@@ -523,6 +542,12 @@ private:
 public:
     /// @brief Lock data for read-only access.
     /// @return Handle on owned data.
+    template<
+        class _M = M,
+        typename = typename std::enable_if<
+            (detail::is_basic_lockable<_M>::value ||
+             detail::is_basic_shared_lockable<_M>::value) &&
+            std::is_same<_M, M>::value>::type>
     Handle lock() const
     {
         detail::proxy_mutex::lock_read(m_mutex);
@@ -531,20 +556,35 @@ public:
 
     /// @brief Try to lock data for read-only access.
     /// @return Handle on owned data if available. Check before use.
-    auto try_lock() const -> decltype(std::declval<Mustex>().try_lock_impl())
+    template<
+        typename U = Mustex,
+        typename std::enable_if<
+            std::is_same<U, Mustex>::value,
+            decltype(std::declval<U>().try_lock_impl()) *>::type = nullptr>
+    inline auto try_lock() const -> decltype(std::declval<Mustex>().try_lock_impl())
     {
         return try_lock_impl();
     }
 
     /// @brief Try to lock data for read-only access.
     /// @return Handle on owned data if available. Check before use.
-    auto lock(std::try_to_lock_t) const -> decltype(std::declval<Mustex>().try_lock_impl())
+    template<
+        typename U = Mustex,
+        typename std::enable_if<
+            std::is_same<U, Mustex>::value,
+            decltype(std::declval<U>().try_lock_impl()) *>::type = nullptr>
+    inline auto lock(std::try_to_lock_t) const -> decltype(std::declval<Mustex>().try_lock_impl())
     {
         return try_lock_impl();
     }
 
     /// @brief Lock data for write access.
     /// @return Handle on owned data.
+    template<
+        class _M = M,
+        typename = typename std::enable_if<
+            detail::is_basic_lockable<_M>::value &&
+            std::is_same<_M, M>::value>::type>
     HandleMut lock_mut()
     {
         detail::proxy_mutex::lock_write(m_mutex);
@@ -553,14 +593,24 @@ public:
 
     /// @brief Try to lock data for write access.
     /// @return Handle on owned data if available. Check before use.
-    auto try_lock_mut() -> decltype(std::declval<Mustex>().try_lock_mut_impl())
+    template<
+        typename U = Mustex,
+        typename std::enable_if<
+            std::is_same<U, Mustex>::value,
+            decltype(std::declval<U>().try_lock_mut_impl()) *>::type = nullptr>
+    inline auto try_lock_mut() -> decltype(std::declval<Mustex>().try_lock_mut_impl())
     {
         return try_lock_mut_impl();
     }
 
     /// @brief Try to lock data for write access.
     /// @return Handle on owned data if available. Check before use.
-    auto lock_mut(std::try_to_lock_t) -> decltype(std::declval<Mustex>().try_lock_mut_impl())
+    template<
+        typename U = Mustex,
+        typename std::enable_if<
+            std::is_same<U, Mustex>::value,
+            decltype(std::declval<U>().try_lock_mut_impl()) *>::type = nullptr>
+    inline auto lock_mut(std::try_to_lock_t) -> decltype(std::declval<Mustex>().try_lock_mut_impl())
     {
         return try_lock_mut_impl();
     }
@@ -574,7 +624,16 @@ private:
     friend auto detail::get_mutex_ref(U &m) -> typename std::enable_if<detail::is_mustex<U>::value, typename U::mutex_t &>::type;
     template<template<class> class _WL, typename U>
     friend auto detail::adopt_lock(U &m) -> typename std::enable_if<detail::is_mustex<U>::value, typename U::HandleMut>::type;
-    HandleMut lock_mut(std::adopt_lock_t) { return HandleMut(&m_mutex, &m_data); }
+
+    template<
+        class _M = M,
+        typename = typename std::enable_if<
+            detail::is_basic_lockable<_M>::value &&
+            std::is_same<_M, M>::value>::type>
+    HandleMut lock_mut(std::adopt_lock_t)
+    {
+        return HandleMut(&m_mutex, &m_data);
+    }
 };
 } // namespace bcx
 
