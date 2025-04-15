@@ -490,36 +490,36 @@ public:
 
 private:
 #ifdef _MUSTEX_HAS_OPTIONAL
-    std::optional<Handle> try_lock_impl() const
+    std::optional<Handle>
+#else
+    std::unique_ptr<Handle>
+#endif
+        try_lock_impl() const
     {
         if (detail::proxy_mutex::try_lock_read(m_mutex))
+#ifdef _MUSTEX_HAS_OPTIONAL
             return Handle(&m_mutex, &m_data);
+#else
+            return std::unique_ptr<Handle>(new Handle(&m_mutex, &m_data));
+#endif
         return {};
     }
-    std::optional<HandleMut> try_lock_mut_impl()
+#ifdef _MUSTEX_HAS_OPTIONAL
+    std::optional<HandleMut>
+#else
+    std::unique_ptr<HandleMut>
+#endif
+        try_lock_mut_impl()
     {
         if (detail::proxy_mutex::try_lock_write(m_mutex))
+#ifdef _MUSTEX_HAS_OPTIONAL
             return HandleMut(&m_mutex, &m_data);
+#else
+            return std::unique_ptr<HandleMut>(new HandleMut(&m_mutex, &m_data));
+#endif
         return {};
     }
-#else // #ifdef _MUSTEX_HAS_OPTIONAL
-    std::unique_ptr<Handle> try_lock_impl() const
-    {
-        if (detail::proxy_mutex::try_lock_read(m_mutex))
-            return std::unique_ptr<Handle>(
-                new Handle(&m_mutex, &m_data)
-            );
-        return {};
-    }
-    std::unique_ptr<HandleMut> try_lock_mut_impl()
-    {
-        if (detail::proxy_mutex::try_lock_write(m_mutex))
-            return std::unique_ptr<HandleMut>(
-                new HandleMut(&m_mutex, &m_data)
-            );
-        return {};
-    }
-#endif // #ifdef _MUSTEX_HAS_OPTIONAL
+
 public:
     /// @brief Lock data for read-only access.
     /// @return Handle on owned data.
