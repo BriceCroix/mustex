@@ -583,6 +583,40 @@ private:
         return {};
     }
 
+    template<typename Rep, typename Period>
+#ifdef _MUSTEX_HAS_OPTIONAL
+    std::optional<Handle>
+#else
+    std::unique_ptr<Handle>
+#endif
+        try_lock_for_impl(const std::chrono::duration<Rep, Period> &d) const
+    {
+        if (detail::proxy_mutex::try_lock_read_for(m_mutex, d))
+#ifdef _MUSTEX_HAS_OPTIONAL
+            return Handle(&m_mutex, &m_data);
+#else
+            return std::unique_ptr<Handle>(new Handle(&m_mutex, &m_data));
+#endif
+        return {};
+    }
+
+    template<typename Clock, typename Duration>
+#ifdef _MUSTEX_HAS_OPTIONAL
+    std::optional<Handle>
+#else
+    std::unique_ptr<Handle>
+#endif
+        try_lock_until_impl(const std::chrono::time_point<Clock, Duration> &tp) const
+    {
+        if (detail::proxy_mutex::try_lock_read_until(m_mutex, tp))
+#ifdef _MUSTEX_HAS_OPTIONAL
+            return Handle(&m_mutex, &m_data);
+#else
+            return std::unique_ptr<Handle>(new Handle(&m_mutex, &m_data));
+#endif
+        return {};
+    }
+
 #ifdef _MUSTEX_HAS_OPTIONAL
     std::optional<HandleMut>
 #else
@@ -591,6 +625,40 @@ private:
         try_lock_mut_impl()
     {
         if (detail::proxy_mutex::try_lock_write(m_mutex))
+#ifdef _MUSTEX_HAS_OPTIONAL
+            return HandleMut(&m_mutex, &m_data);
+#else
+            return std::unique_ptr<HandleMut>(new HandleMut(&m_mutex, &m_data));
+#endif
+        return {};
+    }
+
+    template<typename Rep, typename Period>
+#ifdef _MUSTEX_HAS_OPTIONAL
+    std::optional<HandleMut>
+#else
+    std::unique_ptr<HandleMut>
+#endif
+        try_lock_mut_for_impl(const std::chrono::duration<Rep, Period> &d)
+    {
+        if (detail::proxy_mutex::try_lock_write_for(m_mutex, d))
+#ifdef _MUSTEX_HAS_OPTIONAL
+            return HandleMut(&m_mutex, &m_data);
+#else
+            return std::unique_ptr<HandleMut>(new HandleMut(&m_mutex, &m_data));
+#endif
+        return {};
+    }
+
+    template<typename Clock, typename Duration>
+#ifdef _MUSTEX_HAS_OPTIONAL
+    std::optional<HandleMut>
+#else
+    std::unique_ptr<HandleMut>
+#endif
+        try_lock_mut_until_impl(const std::chrono::time_point<Clock, Duration> &tp)
+    {
+        if (detail::proxy_mutex::try_lock_write_until(m_mutex, tp))
 #ifdef _MUSTEX_HAS_OPTIONAL
             return HandleMut(&m_mutex, &m_data);
 #else
@@ -622,6 +690,26 @@ public:
         return try_lock_impl();
     }
 
+    /// @brief Try to lock data for read-only access for given amount of time.
+    /// @param d Amount of time to try acquiring access. Returns if exceeded.
+    /// @return Handle on owned data if available during given amount of time. Check before use.
+    template<typename Rep, typename Period>
+    inline auto try_lock_for(const std::chrono::duration<Rep, Period> &d) const
+        -> decltype(std::declval<Mustex>().try_lock_for_impl(d))
+    {
+        return try_lock_for_impl(d);
+    }
+
+    /// @brief Try to lock data for read-only access until given instant is reached.
+    /// @param tp Deadline for access to be granted. Returns if reached.
+    /// @return Handle on owned data if available before deadline. Check before use.
+    template<typename Clock, typename Duration>
+    inline auto try_lock_until(const std::chrono::time_point<Clock, Duration> &tp) const
+        -> decltype(std::declval<Mustex>().try_lock_until_impl(tp))
+    {
+        return try_lock_until_impl(tp);
+    }
+
     /// @brief Lock data for write access.
     /// @return Handle on owned data.
     HandleMut lock_mut()
@@ -642,6 +730,26 @@ public:
     inline auto lock_mut(std::try_to_lock_t) -> decltype(std::declval<Mustex>().try_lock_mut_impl())
     {
         return try_lock_mut_impl();
+    }
+
+    /// @brief Try to lock data for write access for given amount of time.
+    /// @param d Amount of time to try acquiring access. Returns if exceeded.
+    /// @return Handle on owned data if available during given amount of time. Check before use.
+    template<typename Rep, typename Period>
+    inline auto try_lock_mut_for(const std::chrono::duration<Rep, Period> &d)
+        -> decltype(std::declval<Mustex>().try_lock_mut_for_impl(d))
+    {
+        return try_lock_mut_for_impl(d);
+    }
+
+    /// @brief Try to lock data for write access until given instant is reached.
+    /// @param tp Deadline for access to be granted. Returns if reached.
+    /// @return Handle on owned data if available before deadline. Check before use.
+    template<typename Clock, typename Duration>
+    inline auto try_lock_mut_until(const std::chrono::time_point<Clock, Duration> &tp)
+        -> decltype(std::declval<Mustex>().try_lock_mut_until_impl(tp))
+    {
+        return try_lock_mut_until_impl(tp);
     }
 
 private:
