@@ -62,6 +62,62 @@ using DefaultMustexMutex = std::shared_timed_mutex;
 using DefaultMustexMutex = std::mutex;
 #endif // #ifdef _MUSTEX_HAS_SHARED_MUTEX
 
+/// @brief Concept class whose member `value` indicates if a mutex is BasicLockable.
+/// https://en.cppreference.com/w/cpp/named_req/BasicLockable
+/// @tparam T Type of mutex to check.
+template<typename T>
+class is_basic_lockable
+{
+private:
+    template<typename U>
+    static auto test(int) -> decltype(std::declval<U>().lock(), std::declval<U>().unlock(), std::true_type{});
+
+    template<typename>
+    static std::false_type test(...);
+
+public:
+    static constexpr bool value = decltype(test<T>(0))::value;
+};
+
+/// @brief Concept class whose member `value` indicates if a mutex is Lockable.
+/// https://en.cppreference.com/w/cpp/named_req/Lockable
+/// @tparam T Type of mutex to check.
+template<typename T>
+class is_lockable
+{
+private:
+    template<typename U>
+    static auto test(int) -> decltype(std::declval<U>().lock(), // must be valid
+                                      std::is_same<decltype(std::declval<U>().try_lock()), bool>{}, // must return bool
+                                      std::declval<U>().unlock(), // must be valid
+                                      std::true_type{});
+
+    template<typename>
+    static std::false_type test(...);
+
+public:
+    static constexpr bool value = decltype(test<T>(0))::value;
+};
+
+/// @brief Concept class whose member `value` indicates if a mutex is BasicSharedLockable.
+/// This named requirement is not standard but easily derived from BasicLockable/Lockable.
+/// @tparam T Type of mutex to check.
+template<typename T>
+class is_basic_shared_lockable
+{
+private:
+    template<typename U>
+    static auto test(int) -> decltype(std::declval<U>().lock_shared(), // must be valid
+                                      std::declval<U>().unlock_shared(), // must be valid
+                                      std::true_type{});
+
+    template<typename>
+    static std::false_type test(...);
+
+public:
+    static constexpr bool value = decltype(test<T>(0))::value;
+};
+
 /// @brief Concept class whose member `value` indicates if a mutex is SharedLockable.
 /// https://en.cppreference.com/w/cpp/named_req/SharedLockable
 /// @tparam T Type of mutex to check.
