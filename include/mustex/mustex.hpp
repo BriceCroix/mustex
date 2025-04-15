@@ -43,6 +43,7 @@
 #    include <shared_mutex>
 #endif // #ifdef _MUSTEX_HAS_SHARED_MUTEX
 
+#include <chrono>
 #include <mutex>
 #include <utility>
 
@@ -58,7 +59,6 @@ namespace detail
 #ifdef _MUSTEX_HAS_SHARED_MUTEX
 using DefaultMustexMutex = std::shared_timed_mutex;
 #else // #ifdef _MUSTEX_HAS_SHARED_MUTEX
-
 using DefaultMustexMutex = std::mutex;
 #endif // #ifdef _MUSTEX_HAS_SHARED_MUTEX
 
@@ -95,6 +95,25 @@ private:
 
 public:
     static constexpr bool value = decltype(test<T>(0))::value && is_basic_lockable<T>::value;
+};
+
+/// @brief Concept class whose member `value` indicates if a mutex is TimedLockable.
+/// https://en.cppreference.com/w/cpp/named_req/TimedLockable
+/// @tparam T Type of mutex to check.
+template<typename T>
+class is_timed_lockable
+{
+private:
+    template<typename U, typename Rep, typename Period, typename Clock, typename Duration>
+    static auto test(int) -> decltype(std::is_same<decltype(std::declval<U>().try_lock_for(std::declval<const std::chrono::duration<Rep, Period> &>())), bool>{}, // Must return bool
+                                      std::is_same<decltype(std::declval<U>().try_lock_until(std::declval<const std::chrono::time_point<Clock, Duration> &>())), bool>{}, // Must return bool
+                                      std::true_type{});
+
+    template<typename>
+    static std::false_type test(...);
+
+public:
+    static constexpr bool value = decltype(test<T>(0))::value && is_lockable<T>::value;
 };
 
 /// @brief Concept class whose member `value` indicates if a mutex is BasicSharedLockable.
@@ -134,6 +153,25 @@ public:
     static constexpr bool value = decltype(test<T>(0))::value && is_basic_shared_lockable<T>::value;
 };
 
+/// @brief Concept class whose member `value` indicates if a mutex is SharedTimedLockable.
+/// https://en.cppreference.com/w/cpp/named_req/SharedTimedLockable
+/// @tparam T Type of mutex to check.
+template<typename T>
+class is_shared_timed_lockable
+{
+private:
+    template<typename U, typename Rep, typename Period, typename Clock, typename Duration>
+    static auto test(int) -> decltype(std::is_same<decltype(std::declval<U>().try_lock_shared_for(std::declval<const std::chrono::duration<Rep, Period> &>())), bool>{}, // Must return bool
+                                      std::is_same<decltype(std::declval<U>().try_lock_shared_until(std::declval<const std::chrono::time_point<Clock, Duration> &>())), bool>{}, // Must return bool
+                                      std::true_type{});
+
+    template<typename>
+    static std::false_type test(...);
+
+public:
+    static constexpr bool value = decltype(test<T>(0))::value && is_shared_lockable<T>::value;
+};
+
 /// @brief Methods to redirect read/write lock accesses to mutex,
 /// depending on whether or not the mutex is shared lockable.
 namespace proxy_mutex
@@ -168,6 +206,45 @@ inline typename std::enable_if<!is_shared_lockable<M>::value, bool>::type
 {
     return m.try_lock();
 }
+
+template<typename M, typename Rep, typename Period>
+inline typename std::enable_if<is_shared_timed_lockable<M>::value, bool>::type
+    try_lock_read_for(M &m, const std::chrono::duration<Rep, Period> &d)
+{
+    return m.try_lock_shared_for(d);
+}
+template<typename M, typename Rep, typename Period>
+inline typename std::enable_if<!is_shared_timed_lockable<M>::value, bool>::type
+    try_lock_read_for(M &m, const std::chrono::duration<Rep, Period> &d)
+{
+    return m.try_lock_for(d);
+}
+
+template<typename M, typename Clock, typename Duration>
+inline typename std::enable_if<is_shared_timed_lockable<M>::value, bool>::type
+    try_lock_read_until(M &m, const std::chrono::time_point<Clock, Duration> &tp)
+{
+    return m.try_lock_shared_until(tp);
+}
+template<typename M, typename Clock, typename Duration>
+inline typename std::enable_if<!is_shared_timed_lockable<M>::value, bool>::type
+    try_lock_read_until(M &m, const std::chrono::time_point<Clock, Duration> &tp)
+{
+    return m.try_lock_until(tp);
+}
+
+template<typename M, typename Rep, typename Period>
+inline bool try_lock_write_for(M &m, const std::chrono::duration<Rep, Period> &d)
+{
+    return m.try_lock_for(d);
+}
+
+template<typename M, typename Clock, typename Duration>
+inline bool try_lock_write_until(M &m, const std::chrono::time_point<Clock, Duration> &tp)
+{
+    return m.try_lock_until(tp);
+}
+
 template<typename M>
 inline bool try_lock_write(M &m)
 {
