@@ -82,62 +82,59 @@ public:
     static constexpr bool value = decltype(test<T>(0))::value;
 };
 
-/// @brief Wrapper class around any mutex to redirect read/write lock accesses to shared lock,
+/// @brief Methods to redirect read/write lock accesses to mutex,
 /// depending on whether or not the mutex is shared lockable.
-/// @tparam M
-template<class M>
-class ProxyMutex : public M
+namespace proxy_mutex
 {
-public:
-    ProxyMutex()
-        : M() {}
+template<typename M>
+inline typename std::enable_if<is_shared_lockable<M>::value, void>::type lock_read(M &m)
+{
+    m.lock_shared();
+}
+template<typename M>
+inline typename std::enable_if<!is_shared_lockable<M>::value, void>::type lock_read(M &m)
+{
+    m.lock();
+}
+template<typename M>
+inline void lock_write(M &m)
+{
+    m.lock();
+}
 
-    template<typename U = M>
-    inline typename std::enable_if<is_shared_lockable<U>::value && std::is_same<U, M>::value, void>::type lock_read()
-    {
-        M::lock_shared();
-    }
-    template<typename U = M>
-    inline typename std::enable_if<!is_shared_lockable<U>::value && std::is_same<U, M>::value, void>::type lock_read()
-    {
-        M::lock();
-    }
-    inline void lock_write()
-    {
-        M::lock();
-    }
+template<typename M>
+inline typename std::enable_if<is_shared_lockable<M>::value, bool>::type try_lock_read(M &m)
+{
+    return m.try_lock_shared();
+}
+template<typename M>
+inline typename std::enable_if<!is_shared_lockable<M>::value, bool>::type
+    try_lock_read(M &m)
+{
+    return m.try_lock();
+}
+template<typename M>
+inline bool try_lock_write(M &m)
+{
+    return m.try_lock();
+}
 
-    template<typename U = M>
-    inline typename std::enable_if<is_shared_lockable<U>::value && std::is_same<U, M>::value, bool>::type try_lock_read()
-    {
-        return M::try_lock_shared();
-    }
-    template<typename U = M>
-    inline typename std::enable_if<!is_shared_lockable<U>::value && std::is_same<U, M>::value, bool>::type
-        try_lock_read()
-    {
-        return M::try_lock();
-    }
-    inline bool try_lock_write()
-    {
-        return M::try_lock();
-    }
-
-    template<typename U = M>
-    inline typename std::enable_if<is_shared_lockable<U>::value && std::is_same<U, M>::value, void>::type unlock_read()
-    {
-        M::unlock_shared();
-    }
-    template<typename U = M>
-    inline typename std::enable_if<!is_shared_lockable<U>::value && std::is_same<U, M>::value, void>::type unlock_read()
-    {
-        M::unlock();
-    }
-    inline void unlock_write()
-    {
-        M::unlock();
-    }
-};
+template<typename M>
+inline typename std::enable_if<is_shared_lockable<M>::value, void>::type unlock_read(M &m)
+{
+    m.unlock_shared();
+}
+template<typename M>
+inline typename std::enable_if<!is_shared_lockable<M>::value, void>::type unlock_read(M &m)
+{
+    m.unlock();
+}
+template<typename M>
+inline void unlock_write(M &m)
+{
+    m.unlock();
+}
+} // namespace proxy_mutex
 
 template<typename U>
 struct is_mustex : std::false_type
@@ -299,9 +296,9 @@ private:
         if (!m_mutex)
             return;
         if (std::is_const<T>::value)
-            m_mutex->unlock_read();
+            detail::proxy_mutex::unlock_read(*m_mutex);
         else
-            m_mutex->unlock_write();
+            detail::proxy_mutex::unlock_write(*m_mutex);
     }
 
 public:
@@ -349,13 +346,13 @@ public:
     }
 
 private:
-    detail::ProxyMutex<M> *m_mutex;
+    M *m_mutex;
     T *m_data;
 
     /// @brief Create handle on ALREADY ACQUIRED mutex.
     /// @param mutex
     /// @param data
-    MustexHandle(detail::ProxyMutex<M> *mutex, T *data)
+    MustexHandle(M *mutex, T *data)
         : m_mutex{mutex}
         , m_data{data}
     {
@@ -439,20 +436,20 @@ private:
 #ifdef _MUSTEX_HAS_OPTIONAL
     std::optional<Handle> try_lock_impl() const
     {
-        if (m_mutex.try_lock_read())
+        if (detail::proxy_mutex::try_lock_read(m_mutex))
             return Handle(&m_mutex, &m_data);
         return {};
     }
     std::optional<HandleMut> try_lock_mut_impl()
     {
-        if (m_mutex.try_lock_write())
+        if (detail::proxy_mutex::try_lock_write(m_mutex))
             return HandleMut(&m_mutex, &m_data);
         return {};
     }
 #else // #ifdef _MUSTEX_HAS_OPTIONAL
     std::unique_ptr<Handle> try_lock_impl() const
     {
-        if (m_mutex.try_lock_read())
+        if (detail::proxy_mutex::try_lock_read(m_mutex))
             return std::unique_ptr<Handle>(
                 new Handle(&m_mutex, &m_data)
             );
@@ -460,7 +457,7 @@ private:
     }
     std::unique_ptr<HandleMut> try_lock_mut_impl()
     {
-        if (m_mutex.try_lock_write())
+        if (detail::proxy_mutex::try_lock_write(m_mutex))
             return std::unique_ptr<HandleMut>(
                 new HandleMut(&m_mutex, &m_data)
             );
@@ -472,7 +469,7 @@ public:
     /// @return Handle on owned data.
     Handle lock() const
     {
-        m_mutex.lock_read();
+        detail::proxy_mutex::lock_read(m_mutex);
         return Handle(&m_mutex, &m_data);
     }
 
@@ -494,7 +491,7 @@ public:
     /// @return Handle on owned data.
     HandleMut lock_mut()
     {
-        m_mutex.lock_write();
+        detail::proxy_mutex::lock_write(m_mutex);
         return HandleMut(&m_mutex, &m_data);
     }
 
@@ -514,7 +511,7 @@ public:
 
 private:
     T m_data;
-    mutable detail::ProxyMutex<M> m_mutex;
+    mutable M m_mutex;
 
     // These are necessary in order for bcx::lock_mut to work.
     template<typename U>
