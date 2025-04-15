@@ -59,7 +59,7 @@ namespace detail
 #ifdef _MUSTEX_HAS_SHARED_MUTEX
 using DefaultMustexMutex = std::shared_timed_mutex;
 #else // #ifdef _MUSTEX_HAS_SHARED_MUTEX
-using DefaultMustexMutex = std::mutex;
+using DefaultMustexMutex = std::timed_mutex;
 #endif // #ifdef _MUSTEX_HAS_SHARED_MUTEX
 
 /// @brief Concept class whose member `value` indicates if a mutex is BasicLockable.
