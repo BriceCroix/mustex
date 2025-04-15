@@ -172,7 +172,6 @@ std::launch(
 Or even better, if it is not necessary to have handles on both data at the same time, scope the
 lifetime of the handles in order not to have them living simultaneously.
 
-
 ## More realistic example
 
 The following example demonstrates how it is possible to have 2 consumers for 1 producer sharing
@@ -278,20 +277,21 @@ int main(int argc, char *argv[])
 
 ### Using custom mutex or lock types
 
-The `Mustex` class internally uses the mutexes and locks classes provided by the standard library :
+The `Mustex` class internally uses the mutexes classes provided by the standard library :
+
 - `std::shared_timed_mutex` if you are compiling for a c++ standard that features it.
 - `std::mutex` if you are compiling without C++14 support.
-- `std::unique_lock` for write-accesses to the protected data.
-  Also used for read-accesses if compiling for a c++ standard that does not feature `std::shared_lock`.
-- `std::shared_lock` for read-accesses to the protected data.
 
 For a reason or another, you may want to use your own mutex and lock types instead of the ones
 provided by the `stdlib`. This can be accomplished by using the full signature of the `Mustex`
 class, that allow to select the mentioned classes.
 
+The "simultaneous readers" feature will enable itself automatically if provided mutex type is
+[*SharedLockable*](https://en.cppreference.com/w/cpp/named_req/SharedLockable).
+
 ```cpp
 template<typename T>
-using MyMustex = bcx::Mustex<T, MySharedMutex, MyReadLock, MyWriteLock>;
+using MyMustex = bcx::Mustex<T, MyMutex>;
 
 int main(int argc, char* argv[])
 {
@@ -303,9 +303,10 @@ int main(int argc, char* argv[])
 ### Enable simultaneous multiple readers for C++11
 
 The *simultaneous multiple readers* feature of this library is made possible thanks to
-`std::shared_timed_mutex` and `std::shared_lock` from C++14.
+`std::shared_timed_mutex` from C++14 (Although `std::shared_mutex` would be sufficient but it was
+only introduced in C++17).
 
-If you can provide your own implementation for these two types you can enable this feature by using
+If you can provide your own implementation for this types you can enable this feature by using
 the full signature of the `Mustex` class, just like in the [previous section](#using-custom-mutex-or-lock-types).
 
 You may also use third-party implementations such as
@@ -323,14 +324,8 @@ class MySharedMutex
     // ...
 }
 
-template <typename M>
-class MySharedLock
-{
-    // ...
-}
-
 template<typename T>
-using MyMustex = bcx::Mustex<T, MySharedMutex, MySharedLock, std::unique_lock>;
+using MyMustex = bcx::Mustex<T, MySharedMutex>;
 
 int main(int argc, char* argv[])
 {
