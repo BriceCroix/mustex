@@ -314,6 +314,81 @@ TEST_CASE("Try lock", "[mustex]")
     future2.wait();
 }
 
+TEST_CASE("Try lock mutably for", "[mustex]")
+{
+    Mustex<int> m(42);
+    std::atomic<bool> started{false};
+
+    auto future = std::async(
+        [&m, &started]
+        {
+            auto opt_handle = m.try_lock_mut_for(std::chrono::nanoseconds(1));
+            started = true;
+            REQUIRE(opt_handle);
+            REQUIRE(**opt_handle == 42);
+            **opt_handle = 45;
+            REQUIRE(**opt_handle == 45);
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        }
+    );
+
+    while (!started)
+        ;
+
+    {
+        auto opt_handle = m.try_lock_mut_for(std::chrono::milliseconds(20));
+        REQUIRE_FALSE(opt_handle);
+    }
+    {
+        auto opt_handle = m.try_lock_mut_for(std::chrono::milliseconds(100 - 20));
+        REQUIRE(opt_handle);
+        REQUIRE(**opt_handle == 45);
+    }
+    future.wait();
+}
+
+TEST_CASE("Try lock for", "[mustex]")
+{
+    Mustex<int> m(42);
+    std::atomic<bool> started{false};
+
+    auto future = std::async(
+        [&m, &started]
+        {
+            auto opt_handle = m.try_lock_for(std::chrono::nanoseconds(1));
+            started = true;
+            REQUIRE(opt_handle);
+            REQUIRE(**opt_handle == 42);
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        }
+    );
+
+    while (!started)
+        ;
+
+    {
+        auto opt_handle = m.try_lock_for(std::chrono::nanoseconds(1));
+#ifdef _MUSTEX_HAS_SHARED_MUTEX
+        REQUIRE(opt_handle);
+        REQUIRE(**opt_handle == 42);
+#else
+        REQUIRE_FALSE(opt_handle);
+#endif // #ifdef _MUSTEX_HAS_SHARED_MUTEX
+    }
+    {
+        auto opt_handle = m.try_lock_mut_for(std::chrono::milliseconds(20));
+        REQUIRE_FALSE(opt_handle);
+    }
+    {
+        auto opt_handle = m.try_lock_mut_for(std::chrono::milliseconds(100 - 20));
+        REQUIRE(opt_handle);
+        REQUIRE(**opt_handle == 42);
+    }
+    future.wait();
+}
+
+// TODO try_lock for/until
+
 TEST_CASE("Move handle mutably (construct)", "[mustex]")
 {
     Mustex<int> m(42);
