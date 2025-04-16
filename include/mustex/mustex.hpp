@@ -105,15 +105,24 @@ class is_timed_lockable
 {
 private:
     template<typename U, typename Rep, typename Period, typename Clock, typename Duration>
-    static auto test(int) -> decltype(std::is_same<decltype(std::declval<U>().try_lock_for(std::declval<const std::chrono::duration<Rep, Period> &>())), bool>{}, // Must return bool
-                                      std::is_same<decltype(std::declval<U>().try_lock_until(std::declval<const std::chrono::time_point<Clock, Duration> &>())), bool>{}, // Must return bool
-                                      std::true_type{});
+    static auto test(
+        const std::chrono::duration<Rep, Period> *d,
+        const std::chrono::time_point<Clock, Duration> *tp
+    ) -> decltype(std::is_same<decltype(std::declval<U>().try_lock_for(*d)), bool>{}, // Must return bool
+                  std::is_same<decltype(std::declval<U>().try_lock_until(*tp)), bool>{}, // Must return bool
+                  std::true_type{});
 
-    template<typename>
+    template<typename, typename, typename, typename, typename>
     static std::false_type test(...);
 
 public:
-    static constexpr bool value = decltype(test<T>(0))::value && is_lockable<T>::value;
+    static constexpr bool value =
+        decltype(test<T, int64_t, std::ratio<1>, std::chrono::high_resolution_clock, std::chrono::high_resolution_clock::duration>(
+            nullptr,
+            nullptr
+        )
+        )::value &&
+        is_lockable<T>::value;
 };
 
 /// @brief Concept class whose member `value` indicates if a mutex is BasicSharedLockable.
@@ -161,15 +170,24 @@ class is_shared_timed_lockable
 {
 private:
     template<typename U, typename Rep, typename Period, typename Clock, typename Duration>
-    static auto test(int) -> decltype(std::is_same<decltype(std::declval<U>().try_lock_shared_for(std::declval<const std::chrono::duration<Rep, Period> &>())), bool>{}, // Must return bool
-                                      std::is_same<decltype(std::declval<U>().try_lock_shared_until(std::declval<const std::chrono::time_point<Clock, Duration> &>())), bool>{}, // Must return bool
-                                      std::true_type{});
+    static auto test(
+        const std::chrono::duration<Rep, Period> *d,
+        const std::chrono::time_point<Clock, Duration> *tp
+    ) -> decltype(std::is_same<decltype(std::declval<U>().try_lock_shared_for(*d)), bool>{}, // Must return bool
+                  std::is_same<decltype(std::declval<U>().try_lock_shared_until(*tp)), bool>{}, // Must return bool
+                  std::true_type{});
 
-    template<typename>
+    template<typename, typename, typename, typename, typename>
     static std::false_type test(...);
 
 public:
-    static constexpr bool value = decltype(test<T>(0))::value && is_shared_lockable<T>::value;
+    static constexpr bool value =
+        decltype(test<T, int64_t, std::ratio<1>, std::chrono::high_resolution_clock, std::chrono::high_resolution_clock::duration>(
+            nullptr,
+            nullptr
+        )
+        )::value &&
+        is_shared_lockable<T>::value;
 };
 
 /// @brief Methods to redirect read/write lock accesses to mutex,
