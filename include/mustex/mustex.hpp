@@ -43,6 +43,7 @@
 #    include <shared_mutex>
 #endif // #ifdef _MUSTEX_HAS_SHARED_MUTEX
 
+#include <chrono>
 #include <mutex>
 #include <utility>
 
@@ -58,20 +59,81 @@ namespace detail
 #ifdef _MUSTEX_HAS_SHARED_MUTEX
 using DefaultMustexMutex = std::shared_timed_mutex;
 #else // #ifdef _MUSTEX_HAS_SHARED_MUTEX
-
-using DefaultMustexMutex = std::mutex;
+using DefaultMustexMutex = std::timed_mutex;
 #endif // #ifdef _MUSTEX_HAS_SHARED_MUTEX
 
-/// @brief Concept class whose member `value` indicates if a mutex is SharedLockable.
-/// https://en.cppreference.com/w/cpp/named_req/SharedLockable
+/// @brief Concept class whose member `value` indicates if a mutex is BasicLockable.
+/// https://en.cppreference.com/w/cpp/named_req/BasicLockable
 /// @tparam T Type of mutex to check.
 template<typename T>
-class is_shared_lockable
+class is_basic_lockable
+{
+private:
+    template<typename U>
+    static auto test(int) -> decltype(std::declval<U>().lock(), std::declval<U>().unlock(), std::true_type{});
+
+    template<typename>
+    static std::false_type test(...);
+
+public:
+    static constexpr bool value = decltype(test<T>(0))::value;
+};
+
+/// @brief Concept class whose member `value` indicates if a mutex is Lockable.
+/// https://en.cppreference.com/w/cpp/named_req/Lockable
+/// @tparam T Type of mutex to check.
+template<typename T>
+class is_lockable
+{
+private:
+    template<typename U>
+    static auto test(int) -> decltype(std::is_same<decltype(std::declval<U>().try_lock()), bool>{}, // must return bool
+                                      std::true_type{});
+
+    template<typename>
+    static std::false_type test(...);
+
+public:
+    static constexpr bool value = decltype(test<T>(0))::value && is_basic_lockable<T>::value;
+};
+
+/// @brief Concept class whose member `value` indicates if a mutex is TimedLockable.
+/// https://en.cppreference.com/w/cpp/named_req/TimedLockable
+/// @tparam T Type of mutex to check.
+template<typename T>
+class is_timed_lockable
+{
+private:
+    template<typename U, typename Rep, typename Period, typename Clock, typename Duration>
+    static auto test(
+        const std::chrono::duration<Rep, Period> *d,
+        const std::chrono::time_point<Clock, Duration> *tp
+    ) -> decltype(std::is_same<decltype(std::declval<U>().try_lock_for(*d)), bool>{}, // Must return bool
+                  std::is_same<decltype(std::declval<U>().try_lock_until(*tp)), bool>{}, // Must return bool
+                  std::true_type{});
+
+    template<typename, typename, typename, typename, typename>
+    static std::false_type test(...);
+
+public:
+    static constexpr bool value =
+        decltype(test<T, int64_t, std::ratio<1>, std::chrono::high_resolution_clock, std::chrono::high_resolution_clock::duration>(
+            nullptr,
+            nullptr
+        )
+        )::value &&
+        is_lockable<T>::value;
+};
+
+/// @brief Concept class whose member `value` indicates if a mutex is BasicSharedLockable.
+/// This named requirement is not standard but easily derived from BasicLockable/Lockable.
+/// @tparam T Type of mutex to check.
+template<typename T>
+class is_basic_shared_lockable
 {
 private:
     template<typename U>
     static auto test(int) -> decltype(std::declval<U>().lock_shared(), // must be valid
-                                      std::is_same<decltype(std::declval<U>().try_lock_shared()), bool>{}, // must return bool
                                       std::declval<U>().unlock_shared(), // must be valid
                                       std::true_type{});
 
@@ -82,17 +144,65 @@ public:
     static constexpr bool value = decltype(test<T>(0))::value;
 };
 
+/// @brief Concept class whose member `value` indicates if a mutex is SharedLockable.
+/// https://en.cppreference.com/w/cpp/named_req/SharedLockable
+/// @tparam T Type of mutex to check.
+template<typename T>
+class is_shared_lockable
+{
+private:
+    template<typename U>
+    static auto test(int) -> decltype(std::is_same<decltype(std::declval<U>().try_lock_shared()), bool>{}, // must return bool
+                                      std::true_type{});
+
+    template<typename>
+    static std::false_type test(...);
+
+public:
+    static constexpr bool value = decltype(test<T>(0))::value && is_basic_shared_lockable<T>::value;
+};
+
+/// @brief Concept class whose member `value` indicates if a mutex is SharedTimedLockable.
+/// https://en.cppreference.com/w/cpp/named_req/SharedTimedLockable
+/// @tparam T Type of mutex to check.
+template<typename T>
+class is_shared_timed_lockable
+{
+private:
+    template<typename U, typename Rep, typename Period, typename Clock, typename Duration>
+    static auto test(
+        const std::chrono::duration<Rep, Period> *d,
+        const std::chrono::time_point<Clock, Duration> *tp
+    ) -> decltype(std::is_same<decltype(std::declval<U>().try_lock_shared_for(*d)), bool>{}, // Must return bool
+                  std::is_same<decltype(std::declval<U>().try_lock_shared_until(*tp)), bool>{}, // Must return bool
+                  std::true_type{});
+
+    template<typename, typename, typename, typename, typename>
+    static std::false_type test(...);
+
+public:
+    static constexpr bool value =
+        decltype(test<T, int64_t, std::ratio<1>, std::chrono::high_resolution_clock, std::chrono::high_resolution_clock::duration>(
+            nullptr,
+            nullptr
+        )
+        )::value &&
+        is_shared_lockable<T>::value;
+};
+
 /// @brief Methods to redirect read/write lock accesses to mutex,
 /// depending on whether or not the mutex is shared lockable.
 namespace proxy_mutex
 {
 template<typename M>
-inline typename std::enable_if<is_shared_lockable<M>::value, void>::type lock_read(M &m)
+inline typename std::enable_if<is_basic_shared_lockable<M>::value, void>::type
+    lock_read(M &m)
 {
     m.lock_shared();
 }
 template<typename M>
-inline typename std::enable_if<!is_shared_lockable<M>::value, void>::type lock_read(M &m)
+inline typename std::enable_if<!is_basic_shared_lockable<M>::value, void>::type
+    lock_read(M &m)
 {
     m.lock();
 }
@@ -103,7 +213,8 @@ inline void lock_write(M &m)
 }
 
 template<typename M>
-inline typename std::enable_if<is_shared_lockable<M>::value, bool>::type try_lock_read(M &m)
+inline typename std::enable_if<is_shared_lockable<M>::value, bool>::type
+    try_lock_read(M &m)
 {
     return m.try_lock_shared();
 }
@@ -113,6 +224,45 @@ inline typename std::enable_if<!is_shared_lockable<M>::value, bool>::type
 {
     return m.try_lock();
 }
+
+template<typename M, typename Rep, typename Period>
+inline typename std::enable_if<is_shared_timed_lockable<M>::value, bool>::type
+    try_lock_read_for(M &m, const std::chrono::duration<Rep, Period> &d)
+{
+    return m.try_lock_shared_for(d);
+}
+template<typename M, typename Rep, typename Period>
+inline typename std::enable_if<!is_shared_timed_lockable<M>::value, bool>::type
+    try_lock_read_for(M &m, const std::chrono::duration<Rep, Period> &d)
+{
+    return m.try_lock_for(d);
+}
+
+template<typename M, typename Clock, typename Duration>
+inline typename std::enable_if<is_shared_timed_lockable<M>::value, bool>::type
+    try_lock_read_until(M &m, const std::chrono::time_point<Clock, Duration> &tp)
+{
+    return m.try_lock_shared_until(tp);
+}
+template<typename M, typename Clock, typename Duration>
+inline typename std::enable_if<!is_shared_timed_lockable<M>::value, bool>::type
+    try_lock_read_until(M &m, const std::chrono::time_point<Clock, Duration> &tp)
+{
+    return m.try_lock_until(tp);
+}
+
+template<typename M, typename Rep, typename Period>
+inline bool try_lock_write_for(M &m, const std::chrono::duration<Rep, Period> &d)
+{
+    return m.try_lock_for(d);
+}
+
+template<typename M, typename Clock, typename Duration>
+inline bool try_lock_write_until(M &m, const std::chrono::time_point<Clock, Duration> &tp)
+{
+    return m.try_lock_until(tp);
+}
+
 template<typename M>
 inline bool try_lock_write(M &m)
 {
@@ -120,12 +270,14 @@ inline bool try_lock_write(M &m)
 }
 
 template<typename M>
-inline typename std::enable_if<is_shared_lockable<M>::value, void>::type unlock_read(M &m)
+inline typename std::enable_if<is_basic_shared_lockable<M>::value, void>::type
+    unlock_read(M &m)
 {
     m.unlock_shared();
 }
 template<typename M>
-inline typename std::enable_if<!is_shared_lockable<M>::value, void>::type unlock_read(M &m)
+inline typename std::enable_if<!is_basic_shared_lockable<M>::value, void>::type
+    unlock_read(M &m)
 {
     m.unlock();
 }
@@ -434,36 +586,105 @@ public:
 
 private:
 #ifdef _MUSTEX_HAS_OPTIONAL
-    std::optional<Handle> try_lock_impl() const
+    std::optional<Handle>
+#else
+    std::unique_ptr<Handle>
+#endif
+        try_lock_impl() const
     {
         if (detail::proxy_mutex::try_lock_read(m_mutex))
+#ifdef _MUSTEX_HAS_OPTIONAL
             return Handle(&m_mutex, &m_data);
+#else
+            return std::unique_ptr<Handle>(new Handle(&m_mutex, &m_data));
+#endif
         return {};
     }
-    std::optional<HandleMut> try_lock_mut_impl()
+
+    template<typename Rep, typename Period>
+#ifdef _MUSTEX_HAS_OPTIONAL
+    std::optional<Handle>
+#else
+    std::unique_ptr<Handle>
+#endif
+        try_lock_for_impl(const std::chrono::duration<Rep, Period> &d) const
+    {
+        if (detail::proxy_mutex::try_lock_read_for(m_mutex, d))
+#ifdef _MUSTEX_HAS_OPTIONAL
+            return Handle(&m_mutex, &m_data);
+#else
+            return std::unique_ptr<Handle>(new Handle(&m_mutex, &m_data));
+#endif
+        return {};
+    }
+
+    template<typename Clock, typename Duration>
+#ifdef _MUSTEX_HAS_OPTIONAL
+    std::optional<Handle>
+#else
+    std::unique_ptr<Handle>
+#endif
+        try_lock_until_impl(const std::chrono::time_point<Clock, Duration> &tp) const
+    {
+        if (detail::proxy_mutex::try_lock_read_until(m_mutex, tp))
+#ifdef _MUSTEX_HAS_OPTIONAL
+            return Handle(&m_mutex, &m_data);
+#else
+            return std::unique_ptr<Handle>(new Handle(&m_mutex, &m_data));
+#endif
+        return {};
+    }
+
+#ifdef _MUSTEX_HAS_OPTIONAL
+    std::optional<HandleMut>
+#else
+    std::unique_ptr<HandleMut>
+#endif
+        try_lock_mut_impl()
     {
         if (detail::proxy_mutex::try_lock_write(m_mutex))
+#ifdef _MUSTEX_HAS_OPTIONAL
             return HandleMut(&m_mutex, &m_data);
+#else
+            return std::unique_ptr<HandleMut>(new HandleMut(&m_mutex, &m_data));
+#endif
         return {};
     }
-#else // #ifdef _MUSTEX_HAS_OPTIONAL
-    std::unique_ptr<Handle> try_lock_impl() const
+
+    template<typename Rep, typename Period>
+#ifdef _MUSTEX_HAS_OPTIONAL
+    std::optional<HandleMut>
+#else
+    std::unique_ptr<HandleMut>
+#endif
+        try_lock_mut_for_impl(const std::chrono::duration<Rep, Period> &d)
     {
-        if (detail::proxy_mutex::try_lock_read(m_mutex))
-            return std::unique_ptr<Handle>(
-                new Handle(&m_mutex, &m_data)
-            );
+        if (detail::proxy_mutex::try_lock_write_for(m_mutex, d))
+#ifdef _MUSTEX_HAS_OPTIONAL
+            return HandleMut(&m_mutex, &m_data);
+#else
+            return std::unique_ptr<HandleMut>(new HandleMut(&m_mutex, &m_data));
+#endif
         return {};
     }
-    std::unique_ptr<HandleMut> try_lock_mut_impl()
+
+    template<typename Clock, typename Duration>
+#ifdef _MUSTEX_HAS_OPTIONAL
+    std::optional<HandleMut>
+#else
+    std::unique_ptr<HandleMut>
+#endif
+        try_lock_mut_until_impl(const std::chrono::time_point<Clock, Duration> &tp)
     {
-        if (detail::proxy_mutex::try_lock_write(m_mutex))
-            return std::unique_ptr<HandleMut>(
-                new HandleMut(&m_mutex, &m_data)
-            );
+        if (detail::proxy_mutex::try_lock_write_until(m_mutex, tp))
+#ifdef _MUSTEX_HAS_OPTIONAL
+            return HandleMut(&m_mutex, &m_data);
+#else
+            return std::unique_ptr<HandleMut>(new HandleMut(&m_mutex, &m_data));
+#endif
         return {};
     }
-#endif // #ifdef _MUSTEX_HAS_OPTIONAL
+
 public:
     /// @brief Lock data for read-only access.
     /// @return Handle on owned data.
@@ -475,16 +696,36 @@ public:
 
     /// @brief Try to lock data for read-only access.
     /// @return Handle on owned data if available. Check before use.
-    auto try_lock() const -> decltype(std::declval<Mustex>().try_lock_impl())
+    inline auto try_lock() const -> decltype(std::declval<Mustex>().try_lock_impl())
     {
         return try_lock_impl();
     }
 
     /// @brief Try to lock data for read-only access.
     /// @return Handle on owned data if available. Check before use.
-    auto lock(std::try_to_lock_t) const -> decltype(std::declval<Mustex>().try_lock_impl())
+    inline auto lock(std::try_to_lock_t) const -> decltype(std::declval<Mustex>().try_lock_impl())
     {
         return try_lock_impl();
+    }
+
+    /// @brief Try to lock data for read-only access for given amount of time.
+    /// @param d Amount of time to try acquiring access. Returns if exceeded.
+    /// @return Handle on owned data if available during given amount of time. Check before use.
+    template<typename Rep, typename Period>
+    inline auto try_lock_for(const std::chrono::duration<Rep, Period> &d) const
+        -> decltype(std::declval<Mustex>().try_lock_for_impl(d))
+    {
+        return try_lock_for_impl(d);
+    }
+
+    /// @brief Try to lock data for read-only access until given instant is reached.
+    /// @param tp Deadline for access to be granted. Returns if reached.
+    /// @return Handle on owned data if available before deadline. Check before use.
+    template<typename Clock, typename Duration>
+    inline auto try_lock_until(const std::chrono::time_point<Clock, Duration> &tp) const
+        -> decltype(std::declval<Mustex>().try_lock_until_impl(tp))
+    {
+        return try_lock_until_impl(tp);
     }
 
     /// @brief Lock data for write access.
@@ -497,16 +738,36 @@ public:
 
     /// @brief Try to lock data for write access.
     /// @return Handle on owned data if available. Check before use.
-    auto try_lock_mut() -> decltype(std::declval<Mustex>().try_lock_mut_impl())
+    inline auto try_lock_mut() -> decltype(std::declval<Mustex>().try_lock_mut_impl())
     {
         return try_lock_mut_impl();
     }
 
     /// @brief Try to lock data for write access.
     /// @return Handle on owned data if available. Check before use.
-    auto lock_mut(std::try_to_lock_t) -> decltype(std::declval<Mustex>().try_lock_mut_impl())
+    inline auto lock_mut(std::try_to_lock_t) -> decltype(std::declval<Mustex>().try_lock_mut_impl())
     {
         return try_lock_mut_impl();
+    }
+
+    /// @brief Try to lock data for write access for given amount of time.
+    /// @param d Amount of time to try acquiring access. Returns if exceeded.
+    /// @return Handle on owned data if available during given amount of time. Check before use.
+    template<typename Rep, typename Period>
+    inline auto try_lock_mut_for(const std::chrono::duration<Rep, Period> &d)
+        -> decltype(std::declval<Mustex>().try_lock_mut_for_impl(d))
+    {
+        return try_lock_mut_for_impl(d);
+    }
+
+    /// @brief Try to lock data for write access until given instant is reached.
+    /// @param tp Deadline for access to be granted. Returns if reached.
+    /// @return Handle on owned data if available before deadline. Check before use.
+    template<typename Clock, typename Duration>
+    inline auto try_lock_mut_until(const std::chrono::time_point<Clock, Duration> &tp)
+        -> decltype(std::declval<Mustex>().try_lock_mut_until_impl(tp))
+    {
+        return try_lock_mut_until_impl(tp);
     }
 
 private:

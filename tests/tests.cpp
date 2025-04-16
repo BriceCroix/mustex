@@ -12,6 +12,27 @@
 
 using namespace bcx;
 
+class BasicLockable
+{
+public:
+    void lock() { m.lock(); }
+    void unlock() { m.unlock(); }
+
+private:
+    std::mutex m;
+};
+
+class Lockable
+{
+public:
+    void lock() { m.lock(); }
+    bool try_lock() { return m.try_lock(); }
+    void unlock() { m.unlock(); }
+
+private:
+    std::mutex m;
+};
+
 class MyClass
 {
 public:
@@ -232,36 +253,216 @@ TEST_CASE("Lock mustex mutably while locked mutably", "[mustex]")
 TEST_CASE("Try lock mutably", "[mustex]")
 {
     Mustex<int> m(42);
+    std::atomic<bool> started{false};
 
-    auto opt_handle = m.try_lock_mut();
-    REQUIRE(opt_handle);
-    REQUIRE(**opt_handle == 42);
-    **opt_handle = 45;
-    REQUIRE(**opt_handle == 45);
+    auto future = std::async(
+        [&m, &started]
+        {
+            auto opt_handle = m.try_lock_mut();
+            started = true;
+            REQUIRE(opt_handle);
+            REQUIRE(**opt_handle == 42);
+            **opt_handle = 45;
+            REQUIRE(**opt_handle == 45);
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        }
+    );
+
+    while (!started)
+        ;
 
     auto opt_handle2 = m.lock_mut(std::try_to_lock);
     REQUIRE_FALSE(opt_handle2);
+    future.wait();
 }
 
 TEST_CASE("Try lock", "[mustex]")
 {
     Mustex<int> m(42);
+    std::atomic<bool> started{false};
 
-    auto opt_handle = m.try_lock();
-    REQUIRE(opt_handle);
-    REQUIRE(**opt_handle == 42);
+    auto future = std::async(
+        [&m, &started]
+        {
+            auto opt_handle = m.try_lock();
+            started = true;
+            REQUIRE(opt_handle);
+            REQUIRE(**opt_handle == 42);
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        }
+    );
 
-    auto opt_handle2 = m.lock(std::try_to_lock);
+    while (!started)
+        ;
+
+    auto future2 = std::async(
+        [&m]
+        {
+            auto opt_handle = m.lock(std::try_to_lock);
 #ifdef _MUSTEX_HAS_SHARED_MUTEX
-    REQUIRE(opt_handle2);
-    REQUIRE(**opt_handle2 == 42);
+            REQUIRE(opt_handle);
+            REQUIRE(**opt_handle == 42);
 #else
-    REQUIRE_FALSE(opt_handle2);
+            REQUIRE_FALSE(opt_handle);
 #endif // #ifdef _MUSTEX_HAS_SHARED_MUTEX
+        }
+    );
 
-    auto opt_handle3 = m.try_lock_mut();
-    REQUIRE_FALSE(opt_handle3);
+    auto opt_handle = m.try_lock_mut();
+    REQUIRE_FALSE(opt_handle);
+    future.wait();
+    future2.wait();
 }
+
+TEST_CASE("Try lock mutably for", "[mustex]")
+{
+    Mustex<int> m(42);
+    std::atomic<bool> started{false};
+
+    auto future = std::async(
+        [&m, &started]
+        {
+            auto opt_handle = m.try_lock_mut_for(std::chrono::nanoseconds(1));
+            started = true;
+            REQUIRE(opt_handle);
+            REQUIRE(**opt_handle == 42);
+            **opt_handle = 45;
+            REQUIRE(**opt_handle == 45);
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        }
+    );
+
+    while (!started)
+        ;
+
+    {
+        auto opt_handle = m.try_lock_mut_for(std::chrono::milliseconds(20));
+        REQUIRE_FALSE(opt_handle);
+    }
+    {
+        auto opt_handle = m.try_lock_mut_for(std::chrono::milliseconds(100 - 20));
+        REQUIRE(opt_handle);
+        REQUIRE(**opt_handle == 45);
+    }
+    future.wait();
+}
+
+TEST_CASE("Try lock for", "[mustex]")
+{
+    Mustex<int> m(42);
+    std::atomic<bool> started{false};
+
+    auto future = std::async(
+        [&m, &started]
+        {
+            auto opt_handle = m.try_lock_for(std::chrono::nanoseconds(1));
+            started = true;
+            REQUIRE(opt_handle);
+            REQUIRE(**opt_handle == 42);
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        }
+    );
+
+    while (!started)
+        ;
+
+    {
+        auto opt_handle = m.try_lock_for(std::chrono::nanoseconds(1));
+#ifdef _MUSTEX_HAS_SHARED_MUTEX
+        REQUIRE(opt_handle);
+        REQUIRE(**opt_handle == 42);
+#else
+        REQUIRE_FALSE(opt_handle);
+#endif // #ifdef _MUSTEX_HAS_SHARED_MUTEX
+    }
+    {
+        auto opt_handle = m.try_lock_mut_for(std::chrono::milliseconds(20));
+        REQUIRE_FALSE(opt_handle);
+    }
+    {
+        auto opt_handle = m.try_lock_mut_for(std::chrono::milliseconds(100 - 20));
+        REQUIRE(opt_handle);
+        REQUIRE(**opt_handle == 42);
+    }
+    future.wait();
+}
+
+TEST_CASE("Try lock mutably until", "[mustex]")
+{
+    Mustex<int> m(42);
+
+    std::atomic<bool> started{false};
+    auto future = std::async(
+        [&m, &started]
+        {
+            auto opt_handle = m.try_lock_mut_until(std::chrono::high_resolution_clock::time_point::max());
+            started = true;
+            REQUIRE(opt_handle);
+            REQUIRE(**opt_handle == 42);
+            **opt_handle = 45;
+            REQUIRE(**opt_handle == 45);
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        }
+    );
+
+    while (!started)
+        ;
+    const auto start_tp = std::chrono::high_resolution_clock::now();
+
+    {
+        auto opt_handle = m.try_lock_mut_until(start_tp + std::chrono::milliseconds(20));
+        REQUIRE_FALSE(opt_handle);
+    }
+    {
+        auto opt_handle = m.try_lock_mut_until(start_tp + std::chrono::milliseconds(110));
+        REQUIRE(opt_handle);
+        REQUIRE(**opt_handle == 45);
+    }
+    future.wait();
+}
+
+TEST_CASE("Try lock until", "[mustex]")
+{
+    Mustex<int> m(42);
+    std::atomic<bool> started{false};
+
+    auto future = std::async(
+        [&m, &started]
+        {
+            auto opt_handle = m.try_lock_until(std::chrono::high_resolution_clock::time_point::max());
+            started = true;
+            REQUIRE(opt_handle);
+            REQUIRE(**opt_handle == 42);
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        }
+    );
+
+    while (!started)
+        ;
+    const auto start_tp = std::chrono::high_resolution_clock::now();
+
+    {
+        auto opt_handle = m.try_lock_until(start_tp + std::chrono::nanoseconds(1));
+#ifdef _MUSTEX_HAS_SHARED_MUTEX
+        REQUIRE(opt_handle);
+        REQUIRE(**opt_handle == 42);
+#else
+        REQUIRE_FALSE(opt_handle);
+#endif // #ifdef _MUSTEX_HAS_SHARED_MUTEX
+    }
+    {
+        auto opt_handle = m.try_lock_mut_until(start_tp + std::chrono::milliseconds(20));
+        REQUIRE_FALSE(opt_handle);
+    }
+    {
+        auto opt_handle = m.try_lock_mut_until(start_tp + std::chrono::milliseconds(110));
+        REQUIRE(opt_handle);
+        REQUIRE(**opt_handle == 42);
+    }
+    future.wait();
+}
+
+// TODO try_lock for/until
 
 TEST_CASE("Move handle mutably (construct)", "[mustex]")
 {
@@ -753,5 +954,27 @@ TEST_CASE("Synchronous try lock", "[mustex]")
         auto locks = try_lock_mut(shared1, shared2, m);
         REQUIRE_FALSE(locks);
         future.wait();
+    }
+}
+
+TEST_CASE("Mustex with BasicLockable only", "[mustex]")
+{
+    Mustex<float, BasicLockable> m(2.f);
+
+    auto handle = m.lock();
+    REQUIRE(*handle == 2.f);
+}
+
+TEST_CASE("Mustex with Lockable only", "[mustex]")
+{
+    Mustex<float, Lockable> m(2.f);
+
+    {
+        auto handle = m.lock();
+        REQUIRE(*handle == 2.f);
+    }
+    {
+        auto handle = m.try_lock();
+        REQUIRE(handle);
     }
 }

@@ -13,7 +13,7 @@ and tries to mimic its functionalities.
 
 - Data-owning mutex type `Mustex<T>` preventing from *forgetting* to lock data.
 - Scoped-based synchronization thanks to `MustexHandle<T>`.
-- One writer at a time with `lock_mut()`, `try_lock_mut()`
+- One writer at a time with `lock_mut()`, `try_lock_mut()`, `try_lock_mut_for(...)`, `try_lock_mut_until(...)`
 
 ```cpp
 bcx::Mustex<float> mustex(42.0f);
@@ -24,7 +24,7 @@ bcx::Mustex<float> mustex(42.0f);
 }
 ```
 
-- Multiple simultaneous readers with `lock()`, `try_lock()`.
+- Multiple simultaneous readers with `lock()`, `try_lock()`, `try_lock_for(...)`, `try_lock_until(...)`.
 
 ```cpp
 bcx::Mustex<std::string> name("Batman");
@@ -46,7 +46,7 @@ future.wait();
 > by providing your own implementation of *SharedLockable* mutexes (or from third-party).
 > See [relevant section](#enable-simultaneous-multiple-readers-for-c11) on how to do this.
 
-- Deadlock-free multiple access.
+- Deadlock-free multiple access with free standing methods `lock_mut()` and `try_lock_mut()`.
 
 ```cpp
 bcx::Mustex<int> mustex1(1);
@@ -55,6 +55,14 @@ std::mutex m;
 {
     auto [handle1, handle2, lock] = bcx::lock_mut(shared1, shared2, m);
     // ...
+}
+{
+    auto res = bcx::try_lock_mut(shared1, shared2, m);
+    if (res)
+    {
+        auto &[handle1, handle2, lock] = *res;
+        // ...
+    }
 }
 ```
 
@@ -100,6 +108,15 @@ auto handle = data.lock();
 decltype(handle) handle2(std::move(handle));
 int very_dangerous = *handle; // WARNING : NEVER USE A MOVED HANDLE.
 ```
+
+Another question is *Why is there no free-standing deadlock-free methods `lock()` and
+`try_lock()`*, the answer to that is that these method rely on the
+[`std::lock()`](https://en.cppreference.com/w/cpp/thread/lock) and
+[`std::try_lock()`](https://en.cppreference.com/w/cpp/thread/try_lock), and the standard does not
+provide methods `std::lock_shared()`, `std::try_lock_shared` to accomplish that (at least to the
+at the moment this is redacted, with C++23). Although it would be possible to implement these method
+ourselves, this would provide small to no benefit compared to the mutable equivalent since the
+deadlock-avoidance algorithm is already a quite demanding process.
 
 ## Common pitfalls
 
@@ -279,15 +296,22 @@ int main(int argc, char *argv[])
 
 The `Mustex` class internally uses the mutexes classes provided by the standard library :
 
-- `std::shared_timed_mutex` if you are compiling for a c++ standard that features it.
+- `std::shared_timed_mutex` if you are compiling for a c++ standard that features it (C++14 and above).
 - `std::mutex` if you are compiling without C++14 support.
 
 For a reason or another, you may want to use your own mutex and lock types instead of the ones
 provided by the `stdlib`. This can be accomplished by using the full signature of the `Mustex`
-class, that allow to select the mentioned classes.
+class, that allow to select the type of mutex to be used.
 
-The "simultaneous readers" feature will enable itself automatically if provided mutex type is
-[*SharedLockable*](https://en.cppreference.com/w/cpp/named_req/SharedLockable).
+The methods `lock()`, `try_lock()`, `try_lock_for(...)`, `try_lock_until(...)` will enable multiple
+readers automatically if provided mutex is respectively *BasicSharedLockable* (provides
+`lock_shared()` and `unlock_shared()`),
+[*SharedLockable*](https://en.cppreference.com/w/cpp/named_req/SharedLockable) and
+[*SharedTimedLockable*](https://en.cppreference.com/w/cpp/named_req/SharedTimedLockable). Otherwise
+these methods will still be usable with one reader at a time if the mutex is respectively
+[*BasicLockable*](https://en.cppreference.com/w/cpp/named_req/BasicLockable),
+[*Lockable*](https://en.cppreference.com/w/cpp/named_req/Lockable) and
+[*TimedLockable*](https://en.cppreference.com/w/cpp/named_req/TimedLockable).
 
 ```cpp
 template<typename T>
@@ -306,7 +330,7 @@ The *simultaneous multiple readers* feature of this library is made possible tha
 `std::shared_timed_mutex` from C++14 (Although `std::shared_mutex` would be sufficient but it was
 only introduced in C++17).
 
-If you can provide your own implementation for this types you can enable this feature by using
+If you can provide your own implementation for this type you can enable this feature by using
 the full signature of the `Mustex` class, just like in the [previous section](#using-custom-mutex-or-lock-types).
 
 You may also use third-party implementations such as
