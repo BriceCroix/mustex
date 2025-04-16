@@ -68,8 +68,8 @@ std::mutex m;
 
 ## Motivations
 
-Much too often are there code-bases with variable(s) protected by a mutex with only its name to
-indicate that it must be locked to do *some* things. But in a class like this :
+Much too often are there code-bases with variables protected by a mutex with only their name to
+indicate that they must be locked to do some things. But in a class like this :
 
 ```cpp
 class VeryBigClass
@@ -95,34 +95,32 @@ a Mustex, you are free to do anything with the data*. The thread that called `lo
 for a certain time, but when a handle is returned, access is granted until the destruction of the
 handle.
 
-So at the question *Why is there no `unlock()`/`lock()` ?* on the handle class, the answer is that
-having these two method would require either to make it possible for the user to access data in an
-unlocked state, or to always return an `optional` when accessing data, which would be quite a burden.
+The only exception to that is when `std::move`ing a handle, the old instance now not owning any
+lock on the data anymore, but still being able to be dereferenced.
+See [Common pitfalls](#common-pitfalls).
 
-The only exception to that is when `std::move`ing instances, the old instance now not owning any
-lock on the data anymore, but still being able to access it :
+### Why is there no `unlock()`/`lock()` methods on the handle class ?
 
-```cpp
-bcx::Mustex<int> data(42);
-auto handle = data.lock();
-decltype(handle) handle2(std::move(handle));
-int very_dangerous = *handle; // WARNING : NEVER USE A MOVED HANDLE.
-```
+Having these two method would require either to make it possible for the user to access data in an
+unlocked state, or require to always return an `optional` when accessing data, which would be quite
+a burden.
 
-Another question is *Why is there no free-standing deadlock-free methods `lock()` and
-`try_lock()`*, the answer to that is that these method rely on the
+### Why is there no free-standing deadlock-free methods `lock()` and `try_lock()` ?
+
+The free standing methods `lock_mut(...)` and `try_lock_mut(...)` rely on the standard methods
 [`std::lock()`](https://en.cppreference.com/w/cpp/thread/lock) and
 [`std::try_lock()`](https://en.cppreference.com/w/cpp/thread/try_lock), and the standard does not
 provide methods `std::lock_shared()`, `std::try_lock_shared` to accomplish that (at least to the
-at the moment this is redacted, with C++23). Although it would be possible to implement these method
-ourselves, this would provide small to no benefit compared to the mutable equivalent since the
-deadlock-avoidance algorithm is already a quite demanding process.
+at the moment this file is redacted, with C++23). Although it would be possible to implement these
+method ourselves, this would provide small to no benefit compared to the mutable equivalent since
+the deadlock-avoidance algorithm is already a quite demanding process.
 
 ## Common pitfalls
 
 - Locking twice the same `Mustex` on the same thread in the same scope.
   - In mutable mode (`lock_mut()`) : will cause a deadlock.
   - In read-only mode (`lock()`) : is undefined behavior.
+
 - Keeping a reference to the underlying data that outlives the lifetime of the handle.
 
 ```cpp
@@ -138,7 +136,7 @@ ref->do_things(); // WARNING This call is undefined behavior (handle is dropped)
 ```
 
 - Locking two instances mutably and sequentially in same scope and in different orders in two (or more) threads.
-The following code can (and eventually will) cause a deadlock.
+The following code can (and eventually will) cause a deadlock :
 
 ```cpp
 bcx::Mustex<SomeClass> m1;
@@ -189,6 +187,15 @@ std::launch(
 Or even better, if it is not necessary to have handles on both data at the same time, scope the
 lifetime of the handles in order not to have them living simultaneously.
 
+- Using a handle that has been moved :
+
+```cpp
+bcx::Mustex<int> data(42);
+auto handle = data.lock();
+decltype(handle) handle2(std::move(handle));
+int very_dangerous = *handle; // WARNING : NEVER USE A MOVED HANDLE (will crash).
+```
+
 ## More realistic example
 
 The following example demonstrates how it is possible to have 2 consumers for 1 producer sharing
@@ -198,8 +205,8 @@ thread to notify clients on the network for instance.
 The two consumers will be able to read the value at the same time providing the producer is not
 currently writing to it.
 
-Notice the use of `shared_ptr` to share the ownership of the `Mustex`, mimicking the common
-`Arc<Mutex<T>>` pattern in rust.
+Notice the use of `std::shared_ptr` to share the ownership of the `Mustex`, mimicking [the common
+`Arc<Mutex<T>>` pattern in rust](https://doc.rust-lang.org/std/sync/struct.Mutex.html#examples).
 
 ```cpp
 #include <atomic>
@@ -294,13 +301,13 @@ int main(int argc, char *argv[])
 
 ### Using custom mutex or lock types
 
-The `Mustex` class internally uses the mutexes classes provided by the standard library :
+The `Mustex` class internally uses the mutex classes provided by the standard library :
 
-- `std::shared_timed_mutex` if you are compiling for a c++ standard that features it (C++14 and above).
-- `std::mutex` if you are compiling without C++14 support.
+- `std::shared_timed_mutex` if you are compiling for a C++ standard that features it (C++14 and above).
+- `std::timed_mutex` if you are compiling without C++14 support.
 
-For a reason or another, you may want to use your own mutex and lock types instead of the ones
-provided by the `stdlib`. This can be accomplished by using the full signature of the `Mustex`
+For a reason or another, you may want to use your own mutex type instead of the ones
+provided by the STL. This can be accomplished by using the full signature of the `Mustex`
 class, that allow to select the type of mutex to be used.
 
 The methods `lock()`, `try_lock()`, `try_lock_for(...)`, `try_lock_until(...)` will enable multiple
@@ -384,15 +391,15 @@ int main(int argc, char* argv[])
 ### Unix
 
 ```bash
-cmake --preset lin-test-<gcc|clang>-cpp<11|17|20>
-cmake --build --preset lin-test-<gcc|clang>-cpp<11|17|20>
+cmake --preset lin-test-<gcc|clang>-cpp<11|14|17|20>
+cmake --build --preset lin-test-<gcc|clang>-cpp<11|14|17|20>
 ./build_lin/mustex_tests
 ```
 
 ### Windows
 
 ```bash
-cmake --preset win-test-<msvc|clang>-cpp<11|17|20>
-cmake --build --preset win-test-<msvc|clang>-cpp<11|17|20>
+cmake --preset win-test-<msvc|clang>-cpp<11|14|17|20>
+cmake --build --preset win-test-<msvc|clang>-cpp<11|14|17|20>
 ./build_win/RelWithDebInfo/mustex_tests.exe
 ```
