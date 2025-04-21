@@ -1,6 +1,7 @@
 # Mustex
 
 ![master status](https://github.com/BriceCroix/mustex/actions/workflows/actions.yml/badge.svg?branch=master)
+[![license](https://img.shields.io/badge/license-MIT-blue.svg)](https://raw.githubusercontent.com/BriceCroix/mustex/master/LICENSE)
 
 Mustex is a header-only library allowing to make sure a variable protected by a mutex can only be
 accessed while the mutex is locked, while leveraging
