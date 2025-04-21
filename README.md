@@ -299,16 +299,16 @@ int main(int argc, char *argv[])
 
 ## Advanced use
 
-### Using custom mutex or lock types
+### Using custom mutex types
 
 The `Mustex` class internally uses the mutex classes provided by the standard library :
 
 - `std::shared_timed_mutex` if you are compiling for a C++ standard that features it (C++14 and above).
 - `std::timed_mutex` if you are compiling without C++14 support.
 
-For a reason or another, you may want to use your own mutex type instead of the ones
-provided by the STL. This can be accomplished by using the full signature of the `Mustex`
-class, that allow to select the type of mutex to be used.
+For a reason or another, you may want to use another mutex type, maybe one of your own,
+instead of the default aforementioned one. This can be accomplished by using the full signature of
+the `Mustex` class, that allow to select the type of mutex to be used.
 
 The methods `lock()`, `try_lock()`, `try_lock_for(...)`, `try_lock_until(...)` will enable multiple
 readers automatically if provided mutex is respectively *BasicSharedLockable* (provides
@@ -338,7 +338,7 @@ The *simultaneous multiple readers* feature of this library is made possible tha
 only introduced in C++17).
 
 If you can provide your own implementation for this type you can enable this feature by using
-the full signature of the `Mustex` class, just like in the [previous section](#using-custom-mutex-or-lock-types).
+the full signature of the `Mustex` class, just like in the [previous section](#using-custom-mutex-types).
 
 You may also use third-party implementations such as
 [Boost's](http://www.boost.org/doc/libs/1_41_0/doc/html/thread/synchronization.html#thread.synchronization.mutex_types.shared_mutex),

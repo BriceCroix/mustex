@@ -437,6 +437,7 @@ inline auto try_lock_mut(Args &...args) -> decltype(detail::try_lock_mut_impl<L>
 }
 
 /// @brief Allow to access Mustex data, mutably or not depending on method used to construct.
+/// This class is scope-based, and will release access access ownership as soon as dropped.
 /// @tparam T Type of data to be accessed, potentially const-qualified.
 /// @tparam M Type of mutex owned by this class.
 template<typename T, class M>
@@ -511,8 +512,8 @@ private:
     }
 };
 
-/// @brief Data-owning mutex class, allowing never to access shared data
-/// without thread synchronization.
+/// @brief Data-owning mutex class.
+/// Allowing never to access data shared between threads without synchronization.
 /// @tparam T The type of data to be shared among threads.
 /// @tparam M Type of synchronization mutex.
 template<class T, class M = detail::DefaultMustexMutex>
