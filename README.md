@@ -67,6 +67,40 @@ std::mutex m;
 }
 ```
 
+## Integration
+
+[`mustex.hpp`](include/mustex/mustex.hpp) is the only file required to use in your project.
+Make sure to have this file available for your compiler and you are good to go !
+
+### Using CMake FetchContent
+
+You may use CMake to automatically download and include this library in your project.
+In that case you may add the following lines to your `CMakeLists.txt` file.
+
+```cmake
+include(FetchContent)
+
+FetchContent_Declare(
+  mustex
+  GIT_REPOSITORY https://github.com/BriceCroix/mustex.git
+  GIT_TAG        v1.0.0
+)
+FetchContent_MakeAvailable(mustex)
+
+target_link_libraries(myTarget PRIVATE bcx_mustex)
+```
+
+### Using CMake with git submodules
+
+You may add this repository as a git submodule in your project.
+In that case you may add the following lines to your `CMakeLists.txt` file.
+
+```cmake
+add_subdirectory(path/to/submodule/mustex)
+
+target_link_libraries(myTarget PRIVATE bcx_mustex)
+```
+
 ## Motivations
 
 Much too often are there code-bases with variables protected by a mutex with only their name to
